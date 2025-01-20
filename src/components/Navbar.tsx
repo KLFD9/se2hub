@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { HiOutlineSearch } from 'react-icons/hi'
+import { BiMenu } from 'react-icons/bi'
 import '../styles/components/Navbar.css'
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,29 +17,43 @@ export const Navbar = () => {
   }, [])
 
   return (
-    <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
+    <nav className={`navbar ${isScrolled ? 'scrolled' : ''} ${isMobileMenuOpen ? 'menu-open' : ''}`}>
       <div className="navbar-container">
-        <div className="logo">
-          <span className="logo-text">SE2 Hub</span>
-        </div>
-        
-        <div className="nav-links">
-          <a href="#news" className="nav-link">Actualités</a>
-          <a href="#features" className="nav-link">Fonctionnalités</a>
-          <a href="#community" className="nav-link">Communauté</a>
-          <a href="#guides" className="nav-link">Guides</a>
-        </div>
+        <a href="/" className="logo">
+          <div className="logo-wrapper">
+            <div className="logo-main">
+              <span className="logo-glitch" data-text="SE2">SE2</span>
+              <span className="logo-sub" data-text="HUB">HUB</span>
+            </div>
+          </div>
+        </a>
 
-        <div className="nav-actions">
-          <div className="search-container">
-            <HiOutlineSearch className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Rechercher..."
-              className="search-input"
-            />
+        <div className="nav-content">
+          <div className={`nav-links ${isMobileMenuOpen ? 'active' : ''}`}>
+            {['Actualités', 'Fonctionnalités', 'Communauté', 'Guides'].map((item, index) => (
+              <a 
+                key={item} 
+                href={`#${item.toLowerCase()}`} 
+                className="nav-link"
+                style={{ '--delay': `${index * 0.1}s` } as React.CSSProperties}
+              >
+                <span className="link-text">{item}</span>
+                <span className="link-decoration" />
+              </a>
+            ))}
           </div>
         </div>
+        <button 
+          className="mobile-menu-toggle"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          <BiMenu />
+        </button>
+      </div>
+      
+      <div className="navbar-decoration">
+        <div className="decoration-line" />
       </div>
     </nav>
   )
