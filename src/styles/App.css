@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --max-width: 1200px;
+  --padding-x: 2rem;
+  --primary-gradient: linear-gradient(45deg, #4184e4, #00ff9d);
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0d1117;
+  color: #fff;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+}
+
+/* Sections pleine largeur */
+.hero,
+.news-section,
+.features-section,
+.community-section {
+  width: 100dvw;
+  display: flex;
+  justify-content: center;
+  padding: 6rem 0;
+  position: relative;
+}
+
+/* Conteneurs centrés */
+.hero-content,
+.news-container,
+.features-container,
+.community-container {
+  width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+  margin-inline: auto;
+}
+
+/* Ajustements spécifiques */
+.hero {
+  min-height: 100vh;
+  padding: 0;
+  align-items: center;
+}
+
+.navbar {
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.navbar-container {
+  width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+  margin-inline: auto;
+  padding: 1rem 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  font-size: 4rem;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --padding-x: 1rem;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+  }
+
+  h2 {
+    font-size: 2rem;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+  }
+
+  .hero,
+  .news-section,
+  .features-section,
+  .community-section {
+    padding: 4rem 0;
+  }
+} 
