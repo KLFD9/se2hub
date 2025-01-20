@@ -1,95 +1,94 @@
 import { useState } from 'react'
 import '../styles/components/NewsSection.css'
 
-interface NewsItem {
+interface SocialPost {
   id: number
-  title: string
+  platform: 'twitter' | 'instagram' | 'youtube'
+  author: string
   date: string
-  category: string
-  image: string
-  excerpt: string
+  content: string
+  likes: number
+  shares?: number
+  views?: number
+  link: string
 }
 
-const mockNews: NewsItem[] = [
+const mockSocialPosts: SocialPost[] = [
   {
     id: 1,
-    title: "Nouveau Système de Construction Révolutionnaire",
-    date: "15 Mars 2024",
-    category: "Gameplay",
-    image: "/news/construction-system.jpg",
-    excerpt: "Découvrez comment le nouveau système de construction va transformer votre expérience de jeu..."
+    platform: 'twitter',
+    author: '@EngineerHub',
+    date: '15 Mars 2024',
+    content: 'Découvrez notre nouvelle mise à jour du système de construction ! #GameDev #Engineering',
+    likes: 1200,
+    shares: 450,
+    link: 'https://twitter.com/engineerhub/status/1'
   },
   {
     id: 2,
-    title: "Intelligence Artificielle des Drones Améliorée",
-    date: "12 Mars 2024",
-    category: "Fonctionnalités",
-    image: "/news/drone-ai.jpg",
-    excerpt: "Les drones sont maintenant plus intelligents que jamais avec notre nouveau système d'IA..."
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
   },
   {
     id: 3,
-    title: "Exploration de Nouvelles Galaxies",
-    date: "10 Mars 2024",
-    category: "Contenu",
-    image: "/news/galaxies.jpg",
-    excerpt: "Préparez-vous à explorer des systèmes stellaires générés procéduralement..."
+    platform: 'youtube',
+    author: 'Engineer Hub Official',
+    date: '13 Mars 2024',
+    content: 'Comment construire votre première base spatiale - Tutorial complet',
+    likes: 5600,
+    views: 25000,
+    link: 'https://youtube.com/watch?v=1'
   }
 ]
 
 export const NewsSection = () => {
-  const [activeCategory, setActiveCategory] = useState<string>('all')
-
-  const filteredNews = activeCategory === 'all' 
-    ? mockNews 
-    : mockNews.filter(news => news.category.toLowerCase() === activeCategory.toLowerCase())
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'twitter':
+        return '𝕏'
+      case 'instagram':
+        return '📸'
+      case 'youtube':
+        return '▶️'
+      default:
+        return '🔗'
+    }
+  }
 
   return (
-    <section className="news-section" id="news">
-      <div className="news-container">
-        <h2 className="section-title">Dernières Actualités</h2>
-        
-        <div className="category-filters">
-          <button 
-            className={`category-btn ${activeCategory === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('all')}
-          >
-            Tout
-          </button>
-          <button 
-            className={`category-btn ${activeCategory === 'gameplay' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('gameplay')}
-          >
-            Gameplay
-          </button>
-          <button 
-            className={`category-btn ${activeCategory === 'fonctionnalités' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('fonctionnalités')}
-          >
-            Fonctionnalités
-          </button>
-          <button 
-            className={`category-btn ${activeCategory === 'contenu' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('contenu')}
-          >
-            Contenu
-          </button>
+    <section className="social-feed-section" id="social">
+      <div className="social-container">
+        <div className="section-header">
+          <h2 className="section-title">En direct des résaux</h2>
         </div>
-
-        <div className="news-grid">
-          {filteredNews.map(news => (
-            <article key={news.id} className="news-card">
-              <div className="news-image">
-                <img src={news.image} alt={news.title} />
-                <span className="news-category">{news.category}</span>
+        
+        <div className="social-grid">
+          {mockSocialPosts.map(post => (
+            <a 
+              key={post.id} 
+              href={post.link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="social-card"
+            >
+              <div className="social-card-header">
+                <span className="platform-icon">{getPlatformIcon(post.platform)}</span>
+                <span className="author">{post.author}</span>
+                <span className="date">{post.date}</span>
               </div>
-              <div className="news-content">
-                <span className="news-date">{news.date}</span>
-                <h3 className="news-title">{news.title}</h3>
-                <p className="news-excerpt">{news.excerpt}</p>
-                <button className="read-more">Lire la suite</button>
+              <div className="social-content">
+                <p className="content-text">{post.content}</p>
+                <div className="social-stats">
+                  <span className="likes">❤️ {post.likes}</span>
+                  {post.shares && <span className="shares">🔄 {post.shares}</span>}
+                  {post.views && <span className="views">👁️ {post.views}</span>}
+                </div>
               </div>
-            </article>
+            </a>
           ))}
         </div>
       </div>
