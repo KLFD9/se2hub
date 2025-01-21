@@ -1,9 +1,10 @@
 .footer {
-  background: linear-gradient(to bottom, #0d1117, #000);
+  background: linear-gradient(180deg, rgba(13, 13, 15, 0.95) 0%, rgb(18, 18, 20) 100%);
   color: #fff;
+  padding: 4rem 0 2rem;
   position: relative;
   overflow: hidden;
-  padding: 4rem 2rem 2rem;
+  min-height: 400px;
 }
 
 .footer::before {
@@ -12,58 +13,192 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(65, 132, 228, 0.3), transparent);
+  bottom: 0;
+  background: radial-gradient(circle at 70% 80%, rgba(41, 98, 255, 0.1), transparent 60%);
+  pointer-events: none;
 }
 
 .footer-container {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 2rem;
   position: relative;
   z-index: 1;
 }
 
 .footer-content {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 4rem;
-  margin-bottom: 4rem;
+  grid-template-columns: 2fr repeat(3, 1fr);
+  gap: 3rem;
+  margin-bottom: 3rem;
 }
 
-.footer-section h3 {
-  font-size: 1.5rem;
+.main-section {
+  grid-column: 1;
+}
+
+/* Logo Styles */
+.footer-logo {
+  display: inline-block;
+  text-decoration: none;
   margin-bottom: 1.5rem;
-  background: linear-gradient(45deg, #4184e4, #00ff9d);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.logo-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo-glitch {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.logo-sub {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ff2994;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+  margin-left: 0.25rem;
+}
+
+.logo-glitch::before,
+.logo-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(13, 13, 15, 0.95);
+}
+
+.logo-glitch::before {
+  left: -2px;
+  text-shadow: 2px 0 #66e3ff;
+  animation: noise-before 3s infinite linear alternate-reverse;
+}
+
+.logo-glitch::after {
+  left: 2px;
+  text-shadow: -2px 0 #ff2994;
+  animation: noise-after 2s infinite linear alternate-reverse;
+}
+
+@keyframes noise-before {
+  0% {
+    clip: rect(61px, 9999px, 52px, 0);
+  }
+  5% {
+    clip: rect(33px, 9999px, 144px, 0);
+  }
+  10% {
+    clip: rect(121px, 9999px, 115px, 0);
+  }
+  15% {
+    clip: rect(144px, 9999px, 162px, 0);
+  }
+  20% {
+    clip: rect(62px, 9999px, 180px, 0);
+  }
+  25% {
+    clip: rect(34px, 9999px, 42px, 0);
+  }
+  100% {
+    clip: rect(0, 0, 0, 0);
+  }
+}
+
+@keyframes noise-after {
+  0% {
+    clip: rect(60px, 9999px, 50px, 0);
+  }
+  5% {
+    clip: rect(30px, 9999px, 145px, 0);
+  }
+  10% {
+    clip: rect(120px, 9999px, 110px, 0);
+  }
+  15% {
+    clip: rect(140px, 9999px, 160px, 0);
+  }
+  20% {
+    clip: rect(60px, 9999px, 175px, 0);
+  }
+  25% {
+    clip: rect(35px, 9999px, 45px, 0);
+  }
+  100% {
+    clip: rect(0, 0, 0, 0);
+  }
 }
 
 .footer-section h4 {
-  color: #fff;
   font-size: 1.2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
+  color: #fff;
+  font-weight: 500;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-section h4::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, #4a9eff, transparent);
 }
 
 .footer-description {
-  color: #a0aec0;
+  color: #a0a0a0;
   line-height: 1.6;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .social-links {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .social-link {
-  color: #a0aec0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
   text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.social-link svg {
+  font-size: 1.2rem;
 }
 
 .social-link:hover {
-  color: #4184e4;
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+  transform: translateY(-2px);
 }
 
 .footer-links {
@@ -72,62 +207,77 @@
 }
 
 .footer-links li {
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .footer-links a {
-  color: #a0aec0;
+  color: #a0a0a0;
   text-decoration: none;
   transition: all 0.3s ease;
   display: inline-block;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.footer-links a::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4a9eff;
+  opacity: 0;
+  transition: all 0.3s ease;
 }
 
 .footer-links a:hover {
-  color: #4184e4;
-  transform: translateX(5px);
+  color: #4a9eff;
+  padding-left: 1.5rem;
+}
+
+.footer-links a:hover::before {
+  opacity: 1;
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(65, 132, 228, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .footer-logo .logo-text {
   font-size: 1.5rem;
   font-weight: 700;
-  background: linear-gradient(45deg, #4184e4, #00ff9d);
+  background: linear-gradient(90deg, #4a9eff, #8cc5ff);
   -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .copyright {
-  color: #a0aec0;
+  color: #a0a0a0;
   font-size: 0.9rem;
 }
 
 .language-selector select {
-  background: rgba(26, 31, 46, 0.5);
-  border: 1px solid rgba(65, 132, 228, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  padding: 0.5rem 1rem;
+  border: none;
+  padding: 0.5rem 2.5rem 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
   appearance: none;
-  -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8.825L1.175 4 2.238 2.938 6 6.7l3.763-3.762L10.825 4z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
-  padding-right: 2.5rem;
 }
 
 .language-selector select:focus {
   outline: none;
-  border-color: #4184e4;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.3);
 }
 
 .footer-decoration {
@@ -137,37 +287,240 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+  perspective: 1000px;
+}
+
+.space-object {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.planet {
+  position: fixed;
+  bottom: -20%;
+  right: -10%;
+  width: 800px;
+  height: 800px;
+  pointer-events: none;
+  z-index: 2;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Couche de base de l'astéroïde */
+.asteroid-base {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: url('/public/assets/images/asteroid/asteroid.webp');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+  transform: translateZ(0);
+  will-change: transform;
+  animation: float 20s ease-in-out infinite;
+}
+
+.asteroid-base::after {
+  left: 2px;
+  filter: brightness(1.2) hue-rotate(45deg);
+  mix-blend-mode: screen;
+  transform: translateX(2px);
+}
+
+/* Couche de relief et texture */
+.asteroid-texture {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: url('/public/assets/images/asteroid/asteroid.webp');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.2;
+  mix-blend-mode: soft-light;
+  transform: rotate(180deg);
+  transform: translateZ(-300px) translateX(-15%); /* Augmentation de la profondeur et déplacement vers la gauche */
+  will-change: transform;
+  animation: parallaxSlow 10s ease-in-out infinite; /* Animation de parallaxe plus longue */
+}
+/* Couche de lueur */
+.asteroid-glow {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  top: -25%;
+  left: -25%;
+  background: radial-gradient(
+    circle at 60% 40%,
+    rgba(102, 227, 255, 0.15) 0%,
+    rgba(74, 158, 255, 0.1) 30%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  transform: translateZ(-75px);
+  will-change: transform;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-10px, -15px) rotate(5deg);
+  }
+  50% {
+    transform: translate(-15px, -25px) rotate(10deg);
+  }
+  75% {
+    transform: translate(-5px, -10px) rotate(5deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+
+
+@keyframes parallaxSlow {
+  0%, 100% {
+    transform: translate(-80%, 20%) scale(0.6);
+  }
+  50% {
+    transform: translate(-85%, 15%) scale(0.6);
+  }
+}
+
+@keyframes parallaxFast {
+  0%, 100% {
+    transform: translate(150%, -50%) scale(0.2);
+  }
+  50% {
+    transform: translate(140%, -60%) scale(0.6);
+  }
 }
 
 .star-field {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 1), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 40px 70px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 50px 160px, rgba(255, 255, 255, 1), rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 90px 40px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 130px 80px, rgba(255, 255, 255, 1), rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 170px 120px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0));
+  background-size: 400px 400px;
+  animation: stars 20s linear infinite;
+  opacity: 0.6;
+  transform: rotate(50deg);
+}
+
+.star-field::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 50px 160px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
-  background-size: 200px 200px;
-  opacity: 0.1;
+  background-image: 
+    radial-gradient(2px 2px at 250px 250px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 100px 300px, rgba(255, 255, 255, 1), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 150px 400px, rgba(255, 255, 255, 0.9), rgba(0,0,0,0)),
+    radial-gradient(4px 4px at 200px 200px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0));
+  background-size: 400px 400px;
+  animation: stars 10s linear infinite;
+  transform: rotate(-15deg);
 }
 
-@media (max-width: 968px) {
+.star-field::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(1px 1px at 310px 70px, rgba(255, 255, 255, 0.9), rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 350px 130px, rgba(255, 255, 255, 1), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 390px 100px, rgba(255, 255, 255, 0.85), rgba(0,0,0,0));
+  background-size: 300px 300px;
+  animation: stars 10s linear infinite;
+  transform: rotate(45deg);
+}
+
+@keyframes stars {
+  0% {
+    transform: translateY(0) rotate(30deg);
+  }
+  100% {
+    transform: translateY(-100%) rotate(20deg);
+  }
+}
+
+/* Ajout d'un effet de brume spatiale */
+.space-fog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(41, 98, 255, 0.1), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(74, 158, 255, 0.1), transparent 40%);
+  filter: blur(20px);
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  animation: fogMove 10s ease-in-out infinite;
+}
+
+@keyframes fogMove {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-2%, -2%);
+  }
+}
+
+.disclaimer {
+  text-align: center;
+  color: #a0a0a0;
+  font-size: 0.85rem;
+  margin: 2rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 1024px) {
   .footer-content {
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .footer-section:first-child {
+  .main-section {
     grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 768px) {
   .footer {
-    padding: 3rem 1rem 1.5rem;
+    padding: 3rem 0 1.5rem;
   }
 
   .footer-content {
@@ -178,14 +531,57 @@
   .footer-bottom {
     flex-direction: column;
     text-align: center;
-    gap: 1rem;
   }
 
-  .language-selector {
-    width: 100%;
+  .social-links {
+    justify-content: center;
   }
 
-  .language-selector select {
-    width: 100%;
+  .footer-links a {
+    padding-left: 0;
   }
+
+  .footer-links a:hover {
+    padding-left: 0.5rem;
+  }
+}
+
+/* Script pour l'effet de parallaxe */
+@media (prefers-reduced-motion: no-preference) {
+  .planet {
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0.3, 1);
+  }
+
+  .asteroid-base {
+    transform: translateZ(50px);
+  }
+
+  .asteroid-texture {
+    transform: translate(-80%, 20%) translateZ(-20px) scale(0.6);
+  }
+
+  .asteroid-shadow {
+    transform: translateZ(-50px) scale(1.1);
+  }
+
+  .asteroid-glow {
+    transform: translateZ(-30px);
+  }
+}
+
+/* Ajout d'une classe pour le mouvement */
+.parallax-move {
+  transform: translate(var(--move-x), var(--move-y)) 
+             rotateX(var(--rotate-x)) 
+             rotateY(var(--rotate-y));
+}
+
+/* Classe pour l'animation au scroll */
+.parallax-scroll {
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0.3, 1);
+  transform: translate3d(
+    calc(var(--scroll-offset-x, 0) * 1px),
+    calc(var(--scroll-offset-y, 0) * 1px),
+    0
+  );
 } 

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import '../styles/components/NewsSection.css'
 
 interface SocialPost {

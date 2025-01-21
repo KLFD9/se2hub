@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
-import { HiOutlineSearch } from 'react-icons/hi'
 import { BiMenu } from 'react-icons/bi'
 import '../styles/components/Navbar.css'
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isSearchActive, setIsSearchActive] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {

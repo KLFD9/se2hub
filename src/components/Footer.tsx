@@ -1,64 +1,160 @@
 import '../styles/components/Footer.css'
+import { FaDiscord, FaTwitter, FaYoutube, FaReddit } from 'react-icons/fa'
+import React from 'react'
+
+interface FooterLink {
+  label: string
+  href: string
+  ariaLabel?: string
+}
+
+interface FooterSection {
+  title: string
+  links: FooterLink[]
+}
+
+const footerSections: FooterSection[] = [
+  {
+    title: "Navigation",
+    links: [
+      { label: "Actualités", href: "#news", ariaLabel: "Voir les dernières actualités" },
+      { label: "Fonctionnalités", href: "#features", ariaLabel: "Découvrir les fonctionnalités" },
+      { label: "Communauté", href: "#community", ariaLabel: "Rejoindre la communauté" },
+      { label: "Guides & Tutoriels", href: "#guides", ariaLabel: "Consulter les guides" }
+    ]
+  },
+  {
+    title: "Ressources",
+    links: [
+      { label: "Wiki Communautaire", href: "#wiki", ariaLabel: "Accéder au wiki communautaire" },
+      { label: "Mods Populaires", href: "#mods", ariaLabel: "Découvrir les mods populaires" },
+      { label: "Blueprints", href: "#blueprints", ariaLabel: "Explorer les blueprints" },
+      { label: "Scripts", href: "#scripts", ariaLabel: "Voir les scripts disponibles" }
+    ]
+  },
+  {
+    title: "Communauté",
+    links: [
+      { label: "FAQ", href: "#faq", ariaLabel: "Consulter la FAQ" },
+      { label: "Contact", href: "#contact", ariaLabel: "Nous contacter" },
+      { label: "Règles", href: "#rules", ariaLabel: "Lire les règles" },
+      { label: "Notre Équipe", href: "#team", ariaLabel: "Découvrir notre équipe" }
+    ]
+  }
+]
+
+const socialLinks = [
+  { icon: FaDiscord, label: "Discord", href: "#", ariaLabel: "Rejoindre notre Discord" },
+  { icon: FaTwitter, label: "Twitter", href: "#", ariaLabel: "Nous suivre sur Twitter" },
+  { icon: FaYoutube, label: "YouTube", href: "#", ariaLabel: "S'abonner à notre chaîne YouTube" },
+  { icon: FaReddit, label: "Reddit", href: "#", ariaLabel: "Rejoindre notre subreddit" }
+]
 
 export const Footer = () => {
+  const currentYear = new Date().getFullYear()
+  const planetRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (!planetRef.current) return
+      
+      const scrollPosition = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      
+      // Calculer la progression du scroll (0 à 1)
+      const scrollProgress = scrollPosition / (documentHeight - windowHeight)
+      
+      // Calculer les offsets de parallaxe
+      const offsetY = scrollProgress * 100 // Déplacement vertical
+      const offsetX = Math.sin(scrollProgress * Math.PI) * 30 // Léger mouvement horizontal
+      
+      // Appliquer les transformations
+      planetRef.current.style.setProperty('--scroll-offset-y', String(offsetY))
+      planetRef.current.style.setProperty('--scroll-offset-x', String(offsetX))
+      planetRef.current.classList.add('parallax-scroll')
+    }
+
+    // Appliquer l'effet initial
+    handleScroll()
+
+    // Ajouter l'écouteur d'événement
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   return (
-    <footer className="footer">
+    <footer className="footer" role="contentinfo" aria-label="Pied de page">
       <div className="footer-container">
         <div className="footer-content">
-          <div className="footer-section">
-            <h3>Space Engineers 2</h3>
+          <div className="footer-section main-section">
+            <a href="/" className="footer-logo" aria-label="Retour à l'accueil">
+              <div className="logo-wrapper">
+                <div className="logo-main">
+                  <span className="logo-glitch" data-text="SE2">SE2</span>
+                  <span className="logo-sub" data-text="HUB">HUB</span>
+                </div>
+              </div>
+            </a>
             <p className="footer-description">
-              Le futur de l'ingénierie spatiale commence ici. 
-              Rejoignez-nous dans cette nouvelle aventure.
+              Votre communauté francophone dédiée aux passionnés de Space Engineers. 
+              Partagez, apprenez et construisez ensemble.
             </p>
             <div className="social-links">
-              <a href="#" className="social-link">Twitter</a>
-              <a href="#" className="social-link">Discord</a>
-              <a href="#" className="social-link">YouTube</a>
-              <a href="#" className="social-link">Reddit</a>
+              {socialLinks.map(({ icon: Icon, label, href, ariaLabel }) => (
+                <a 
+                  key={label}
+                  href={href}
+                  className="social-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={ariaLabel}
+                >
+                  <Icon aria-hidden="true" />
+                  <span className="social-label">{label}</span>
+                </a>
+              ))}
             </div>
           </div>
 
-          <div className="footer-section">
-            <h4>Liens Rapides</h4>
-            <ul className="footer-links">
-              <li><a href="#news">Actualités</a></li>
-              <li><a href="#features">Fonctionnalités</a></li>
-              <li><a href="#community">Communauté</a></li>
-              <li><a href="#guides">Guides</a></li>
-            </ul>
-          </div>
+          {footerSections.map((section) => (
+            <div key={section.title} className="footer-section">
+              <h4>{section.title}</h4>
+              <ul className="footer-links">
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    <a 
+                      href={link.href}
+                      aria-label={link.ariaLabel}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
 
-          <div className="footer-section">
-            <h4>Support</h4>
-            <ul className="footer-links">
-              <li><a href="#">FAQ</a></li>
-              <li><a href="#">Support Technique</a></li>
-              <li><a href="#">Signaler un Bug</a></li>
-              <li><a href="#">Contact</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-section">
-            <h4>Légal</h4>
-            <ul className="footer-links">
-              <li><a href="#">Conditions d'Utilisation</a></li>
-              <li><a href="#">Politique de Confidentialité</a></li>
-              <li><a href="#">Mentions Légales</a></li>
-              <li><a href="#">EULA</a></li>
-            </ul>
-          </div>
+        <div className="disclaimer">
+          <p>
+            Engineers Hub est un site communautaire créé par des fans. 
+            Nous ne sommes pas affiliés à Keen Software House ni à Space Engineers. 
+            Space Engineers est une marque déposée de Keen Software House.
+          </p>
         </div>
 
         <div className="footer-bottom">
           <div className="footer-logo">
-            <span className="logo-text">SE2 Hub</span>
           </div>
           <p className="copyright">
-            © 2024 Space Engineers 2 Hub. Tous droits réservés.
+            © {currentYear} SE2HUB. Site communautaire non-officiel.
           </p>
           <div className="language-selector">
-            <select>
+            <select aria-label="Sélectionner la langue" onChange={(e) => console.log('Langue sélectionnée:', e.target.value)}>
               <option value="fr">Français</option>
               <option value="en">English</option>
               <option value="de">Deutsch</option>
@@ -69,7 +165,14 @@ export const Footer = () => {
       </div>
 
       <div className="footer-decoration">
+        <div className="space-fog"></div>
         <div className="star-field"></div>
+        <div className="planet" ref={planetRef}>
+          <div className="asteroid-shadow"></div>
+          <div className="asteroid-base"></div>
+          <div className="asteroid-texture"></div>
+          <div className="asteroid-glow"></div>
+        </div>
       </div>
     </footer>
   )
