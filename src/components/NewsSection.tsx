@@ -34,6 +34,60 @@ const mockSocialPosts: SocialPost[] = [
   },
   {
     id: 3,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 4,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 5,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 6,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 7,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 8,
+    platform: 'instagram',
+    author: '@engineerhub.official',
+    date: '14 Mars 2024',
+    content: '🚀 Les nouveaux designs sont là ! Swipez pour découvrir les dernières innovations.',
+    likes: 3500,
+    link: 'https://instagram.com/p/1'
+  },
+  {
+    id: 9,
     platform: 'youtube',
     author: 'Engineer Hub Official',
     date: '13 Mars 2024',
@@ -62,7 +116,7 @@ export const NewsSection = () => {
     <section className="social-feed-section" id="social">
       <div className="social-container">
         <div className="section-header">
-          <h2 className="section-title">En direct des résaux</h2>
+          <h2 className="section-title">En direct des réseaux</h2>
         </div>
         
         <div className="social-grid">

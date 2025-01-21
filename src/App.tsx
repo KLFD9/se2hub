@@ -3,7 +3,6 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { NewsSection } from './components/NewsSection';
 import { FeaturesGrid } from './components/FeaturesGrid';
-import { CommunitySection } from './components/CommunitySection'
 import { Footer } from './components/Footer'
 import './styles/App.css'
 
@@ -16,7 +15,6 @@ function App() {
           <Hero />
           <NewsSection />
           <FeaturesGrid />
-          <CommunitySection />
         </main>
         <Footer />
       </div>

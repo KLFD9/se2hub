@@ -1,12 +1,16 @@
 .mods-section {
-  padding: 2rem 0;
+  width: 100dvw;
+  display: flex;
+  justify-content: center;
+  padding: 6rem 0;
+  position: relative;
   background: var(--background-dark);
+  overflow-x: hidden;
 }
 
 .mods-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+  margin-inline: auto;
 }
 
 .mods-header {
@@ -296,6 +300,15 @@
 }
 
 @media (max-width: 768px) {
+  .mods-section {
+    padding: 4rem 0;
+  }
+
+  .mods-container {
+    width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+    margin-inline: auto;
+  }
+
   .filter-controls {
     flex-direction: column;
   }

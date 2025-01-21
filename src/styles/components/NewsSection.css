@@ -11,12 +11,17 @@
 .section-title {
   font-size: 2.5rem;
   color: #fff;
-  text-align: center;
+  text-align: left;
   margin-bottom: 3rem;
   position: relative;
   display: inline-block;
-  left: 50%;
-  transform: translateX(-50%);
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px rgba(102, 227, 255, 0.2);
+  transform: none;
+  left: 0;
+  width: 100%;
 }
 
 .section-title::after {
@@ -24,10 +29,13 @@
   position: absolute;
   bottom: -10px;
   left: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, #4184e4, #00ff9d);
-  border-radius: 2px;
+  width: 50%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(102, 227, 255, 0.5),
+    transparent
+  );
 }
 
 .category-filters {
@@ -163,7 +171,13 @@
   }
   
   .section-title {
-    font-size: 2rem;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+  }
+  
+  .section-title::after {
+    width: 40%;
   }
   
   .category-filters {
@@ -184,46 +198,23 @@
 }
 
 .social-feed-section {
-  padding: 6rem 2rem;
-  background: #0d1117;
+  width: 100dvw;
+  display: flex;
+  justify-content: center;
+  padding: 6rem 0;
   position: relative;
+  background: #0d1117;
+  overflow-x: hidden;
 }
 
 .social-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
+  width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+  margin-inline: auto;
 }
 
 .section-header {
   margin-bottom: 3rem;
   text-align: left;
-}
-
-.section-title {
-  font-size: 2.5rem;
-  font-family: 'Orbitron', sans-serif;
-  color: rgba(255, 255, 255, 0.95);
-  text-transform: uppercase;
-  letter-spacing: 4px;
-  text-shadow: 0 0 20px rgba(102, 227, 255, 0.2);
-  margin-bottom: 1rem;
-  position: relative;
-  display: inline-block;
-}
-
-.section-title::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 0;
-  width: 60%;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    rgba(102, 227, 255, 0.5),
-    transparent
-  );
 }
 
 .subtitle {
@@ -339,21 +330,31 @@
 
 @media (max-width: 768px) {
   .social-feed-section {
-    padding: 4rem 1rem;
+    padding: 4rem 0;
   }
   
-  .section-title {
+  .social-container {
+    width: min(var(--max-width), 100% - (var(--padding-x) * 2));
+    margin-inline: auto;
+  }
+  
+  .social-feed-section .section-title {
     font-size: 2rem;
     letter-spacing: 2px;
+    margin-bottom: 2rem;
+  }
+  
+  .social-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .social-card {
+    grid-column: 1 / -1;
   }
   
   .subtitle {
     font-size: 0.75rem;
     letter-spacing: 1px;
-  }
-  
-  .social-card {
-    grid-column: 1 / -1;
   }
 }
 
