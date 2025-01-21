@@ -186,7 +186,7 @@ export const Hero = () => {
                         <span key={tag} className="featured-tag">{tag}</span>
                       ))}
                     </div>
-                    <h2 className="featured-title">{post.title}</h2>
+                    <h2 className="featured-title" data-text={post.title}>{post.title}</h2>
                     <div className="post-meta">
                       <span className="post-date">{post.date}</span>
                       <span className="read-time">

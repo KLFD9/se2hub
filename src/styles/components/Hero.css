@@ -141,52 +141,90 @@
 /* Effet Glitch sur les titres */
 .featured-title {
   position: relative;
-  transition: all 0.2s ease;
+  color: #fff;
+  transition: all 0.3s ease;
 }
 
 .featured-card:hover .featured-title {
-  text-shadow: 
-    1px 1px #ff2994,
-    -1px -1px #66e3ff;
-  animation: glitch 2s linear infinite;
+  text-shadow: 0 0 8px rgba(102, 227, 255, 0.5);
+  animation: textPulse 2s ease-in-out infinite;
 }
 
-@keyframes glitch {
-  0% {
+.featured-card:hover .featured-title::before,
+.featured-card:hover .featured-title::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.featured-card:hover .featured-title::before {
+  color: #ff2994;
+  animation: glitchText 4s infinite linear alternate-reverse;
+  left: 2px;
+}
+
+.featured-card:hover .featured-title::after {
+  color: #66e3ff;
+  animation: glitchText 2s infinite linear alternate-reverse;
+  left: -2px;
+}
+
+@keyframes textPulse {
+  0%, 100% {
     text-shadow: 
-      1px 0 #ff2994,
-      -1px 0 #66e3ff;
+      0 0 8px rgba(102, 227, 255, 0.5),
+      0 0 12px rgba(102, 227, 255, 0.3);
+  }
+  50% {
+    text-shadow: 
+      0 0 12px rgba(102, 227, 255, 0.8),
+      0 0 20px rgba(102, 227, 255, 0.5);
+  }
+}
+
+@keyframes glitchText {
+  0% {
+    opacity: 0;
+    transform: translate(0);
+  }
+  1% {
+    opacity: 0.1;
+    transform: translate(-2px, 2px);
   }
   2% {
-    text-shadow: 
-      1px 1px #ff2994,
-      -1px -1px #66e3ff;
+    opacity: 0;
+    transform: translate(0);
+  }
+  3% {
+    opacity: 0;
+    transform: translate(0);
   }
   4% {
-    text-shadow: none;
+    opacity: 0.1;
+    transform: translate(2px, -2px);
   }
-  96% {
-    text-shadow: none;
-  }
-  98% {
-    text-shadow: 
-      1px -1px #ff2994,
-      -1px 1px #66e3ff;
+  5% {
+    opacity: 0;
+    transform: translate(0);
   }
   100% {
-    text-shadow: 
-      1px 0 #ff2994,
-      -1px 0 #66e3ff;
+    opacity: 0;
+    transform: translate(0);
   }
 }
 
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
+/* Ajout d'un effet de survol supplémentaire */
+.featured-card:hover {
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(102, 227, 255, 0.1) 0%,
+    transparent 50%
+  );
 }
 
 /* Optimisation des pastilles */

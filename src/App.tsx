@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { NewsSection } from './components/NewsSection';
 import { FeaturesGrid } from './components/FeaturesGrid';
+import { ServerRentalSection } from './components/ServerRentalSection';
 import { Footer } from './components/Footer'
 import './styles/App.css'
 
@@ -12,9 +13,10 @@ function App() {
       <div className="app-container">
         <Navbar />
         <main>
-          <Hero />
+          <Hero />          
           <NewsSection />
           <FeaturesGrid />
+          <ServerRentalSection />
         </main>
         <Footer />
       </div>
