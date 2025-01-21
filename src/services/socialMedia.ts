@@ -1,81 +1,87 @@
 import axios from 'axios';
 
-interface SocialPost {
+export interface SocialPost {
   id: string;
-  platform: 'twitter' | 'youtube';
+  platform: 'youtube';
   author: string;
   date: string;
   content: string;
   likes: number;
-  shares?: number;
   views?: number;
-  link: string;
+  videoId: string;
+  thumbnail: string;
 }
 
-interface TwitterResponse {
-  data: {
-    id: string;
-    text: string;
-    created_at: string;
-    public_metrics: {
-      like_count: number;
-      retweet_count: number;
+interface YouTubeChannelResponse {
+  items?: {
+    contentDetails?: {
+      relatedPlaylists?: {
+        uploads: string;
+      };
     };
   }[];
 }
 
-interface YouTubeSearchResponse {
-  items: {
-    id: {
-      videoId: string;
-    };
+interface YouTubePlaylistResponse {
+  items?: {
     snippet: {
       publishedAt: string;
-      channelTitle: string;
       title: string;
+      resourceId: {
+        videoId: string;
+      };
+      channelTitle: string;
+      thumbnails: {
+        high: {
+          url: string;
+        };
+      };
     };
-    statistics?: {
+  }[];
+}
+
+interface YouTubeVideoResponse {
+  items?: {
+    statistics: {
       viewCount: string;
       likeCount: string;
     };
   }[];
 }
 
-// Configuration des comptes à suivre
-const TWITTER_USERNAMES = ['vercel', 'reactjs']; // Comptes tech populaires et actifs
-const YOUTUBE_CHANNEL_IDS = ['UCiIu5_NeaCkv3Nt8R5u7pNg']; // Space Engineers
+// Configuration des chaînes YouTube à suivre
+const YOUTUBE_CHANNEL_IDS = [
+  'UCiIu5_NeaCkv3Nt8R5u7pNg', // Space Engineers
+];
 
-// URL du serveur proxy
-const API_BASE_URL = 'http://localhost:3001/api';
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || '';
 
-export async function getTwitterPosts(): Promise<SocialPost[]> {
+// Instance axios pour l'API YouTube
+const youtubeApi = axios.create({
+  baseURL: 'https://www.googleapis.com/youtube/v3',
+  params: {
+    key: YOUTUBE_API_KEY
+  }
+});
+
+async function getChannelUploadsPlaylistId(channelId: string): Promise<string | null> {
   try {
-    const posts: SocialPost[] = [];
-    
-    for (const username of TWITTER_USERNAMES) {
-      const response = await axios.get<TwitterResponse>(
-        `${API_BASE_URL}/twitter/${username}/tweets`
-      );
+    console.log('Récupération de la playlist pour la chaîne:', channelId);
+    const response = await youtubeApi.get<YouTubeChannelResponse>('/channels', {
+      params: {
+        id: channelId,
+        part: 'contentDetails',
+      }
+    });
 
-      const tweets = response.data.data;
-      tweets.forEach((tweet) => {
-        posts.push({
-          id: tweet.id,
-          platform: 'twitter',
-          author: `@${username}`,
-          date: new Date(tweet.created_at).toLocaleDateString('fr-FR'),
-          content: tweet.text,
-          likes: tweet.public_metrics.like_count,
-          shares: tweet.public_metrics.retweet_count,
-          link: `https://twitter.com/${username}/status/${tweet.id}`
-        });
-      });
-    }
-    
-    return posts;
+    console.log('Réponse de l\'API channels:', response.data);
+    return response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || null;
   } catch (error) {
-    console.error('Erreur lors de la récupération des tweets:', error);
-    return [];
+    console.error('Erreur lors de la récupération de la playlist:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Détails de l\'erreur:', error.response?.data);
+    }
+    return null;
   }
 }
 
@@ -84,46 +90,76 @@ export async function getYoutubePosts(): Promise<SocialPost[]> {
     const posts: SocialPost[] = [];
     
     for (const channelId of YOUTUBE_CHANNEL_IDS) {
-      const response = await axios.get<YouTubeSearchResponse>(
-        `${API_BASE_URL}/youtube/${channelId}/videos`
-      );
-
-      const videos = response.data.items;
-      videos.forEach((video) => {
-        if (video.statistics) {
-          posts.push({
-            id: video.id.videoId,
-            platform: 'youtube',
-            author: video.snippet.channelTitle,
-            date: new Date(video.snippet.publishedAt).toLocaleDateString('fr-FR'),
-            content: video.snippet.title,
-            likes: parseInt(video.statistics.likeCount),
-            views: parseInt(video.statistics.viewCount),
-            link: `https://youtube.com/watch?v=${video.id.videoId}`
-          });
+      try {
+        console.log(`Récupération des vidéos pour la chaîne: ${channelId}`);
+        
+        // 1. Obtenir l'ID de la playlist "Uploads" de la chaîne
+        const uploadsPlaylistId = await getChannelUploadsPlaylistId(channelId);
+        
+        if (!uploadsPlaylistId) {
+          console.warn(`Impossible de trouver la playlist uploads pour la chaîne: ${channelId}`);
+          continue;
         }
-      });
+
+        // 2. Obtenir les dernières vidéos de la playlist
+        const playlistResponse = await youtubeApi.get<YouTubePlaylistResponse>('/playlistItems', {
+          params: {
+            playlistId: uploadsPlaylistId,
+            part: 'snippet',
+            maxResults: 10
+          }
+        });
+
+        if (!playlistResponse.data.items || playlistResponse.data.items.length === 0) {
+          console.warn(`Pas de vidéos trouvées dans la playlist de la chaîne: ${channelId}`);
+          continue;
+        }
+
+        // 3. Pour chaque vidéo, obtenir les statistiques
+        for (const item of playlistResponse.data.items) {
+          const videoId = item.snippet.resourceId.videoId;
+          
+          const videoResponse = await youtubeApi.get<YouTubeVideoResponse>('/videos', {
+            params: {
+              id: videoId,
+              part: 'statistics'
+            }
+          });
+
+          if (videoResponse.data.items?.[0]) {
+            const stats = videoResponse.data.items[0].statistics;
+            posts.push({
+              id: videoId,
+              platform: 'youtube',
+              author: item.snippet.channelTitle,
+              date: new Date(item.snippet.publishedAt).toLocaleDateString('fr-FR'),
+              content: item.snippet.title,
+              likes: parseInt(stats.likeCount) || 0,
+              views: parseInt(stats.viewCount) || 0,
+              videoId: videoId,
+              thumbnail: item.snippet.thumbnails.high.url
+            });
+          }
+        }
+      } catch (channelError) {
+        console.error(`Erreur lors de la récupération des vidéos pour la chaîne ${channelId}:`, channelError);
+        if (axios.isAxiosError(channelError)) {
+          console.error('Détails de l\'erreur:', channelError.response?.data);
+        }
+      }
     }
     
-    return posts;
+    return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   } catch (error) {
     console.error('Erreur lors de la récupération des vidéos YouTube:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Détails de l\'erreur:', error.response?.data);
+    }
     return [];
   }
 }
 
+// Fonction principale pour obtenir tous les posts sociaux
 export async function getAllSocialPosts(): Promise<SocialPost[]> {
-  try {
-    const [twitterPosts, youtubePosts] = await Promise.all([
-      getTwitterPosts(),
-      getYoutubePosts()
-    ]);
-
-    // Combine et trie les posts par date
-    return [...twitterPosts, ...youtubePosts]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  } catch (error) {
-    console.error('Erreur lors de la récupération des posts:', error);
-    return [];
-  }
+  return getYoutubePosts();
 } 

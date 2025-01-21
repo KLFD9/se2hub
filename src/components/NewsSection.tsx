@@ -1,127 +1,99 @@
-import { useEffect, useState } from 'react'
-import '../styles/components/NewsSection.css'
-import { getAllSocialPosts } from '../services/socialMedia'
+import React, { useState } from 'react';
+import { FaYoutube, FaPlay, FaExternalLinkAlt, FaEye, FaHeart } from 'react-icons/fa';
+import { formatDate, formatNumber } from '../utils/formatters';
+import { SocialPost } from '../services/socialMedia';
+import VideoModal from './VideoModal';
+import '../styles/components/NewsSection.css';
 
-interface SocialPost {
-  id: string
-  platform: 'twitter' | 'youtube'
-  author: string
-  date: string
-  content: string
-  likes: number
-  shares?: number
-  views?: number
-  link: string
+interface CardProps {
+  post: SocialPost;
+  onVideoSelect: (videoId: string) => void;
 }
 
-export const NewsSection = () => {
-  const [posts, setPosts] = useState<SocialPost[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const socialPosts = await getAllSocialPosts()
-        setPosts(socialPosts)
-        setLoading(false)
-      } catch (error) {
-        console.error('Error fetching social posts:', error)
-        setError('Erreur lors de la récupération des posts')
-        setLoading(false)
-      }
-    }
-
-    fetchPosts()
-
-    // Rafraîchir les posts toutes les 5 minutes
-    const interval = setInterval(fetchPosts, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case 'twitter':
-        return (
-          <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        )
-      case 'youtube':
-        return (
-          <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em">
-            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 3.993L9 16z" />
-          </svg>
-        )
-      default:
-        return (
-          <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em">
-            <path d="M13.0605 8.11073L14.4747 9.52494L7.31466 16.6849L5.90045 15.2707L13.0605 8.11073Z" />
-            <path d="M15.2704 5.90076L16.6846 7.31497L9.52467 14.475L8.11046 13.0608L15.2704 5.90076Z" />
-          </svg>
-        )
-    }
-  }
-
-  if (loading) {
-    return (
-      <section className="social-feed-section" id="social">
-        <div className="social-container">
-          <div className="section-header">
-            <h2 className="section-title">En direct des réseaux</h2>
-          </div>
-          <div className="loading">Chargement des posts...</div>
+const SocialCard: React.FC<CardProps> = ({ post, onVideoSelect }) => (
+  <article 
+    className="social-card"
+    onClick={() => onVideoSelect(post.videoId)}
+  >
+    <div 
+      className="card-thumbnail" 
+      style={{ backgroundImage: `url(${post.thumbnail})` }} 
+    />
+    <div className="play-overlay">
+      <button className="play-button">
+        <FaPlay size={24} />
+      </button>
+    </div>
+    <div className="card-overlay">
+      <div className="card-content">
+        <div className="social-card-header">
+          <FaYoutube className="platform-icon" />
+          <span className="author">{post.author}</span>
+          <span className="date">{formatDate(post.date)}</span>
         </div>
-      </section>
-    )
-  }
-
-  if (error) {
-    return (
-      <section className="social-feed-section" id="social">
-        <div className="social-container">
-          <div className="section-header">
-            <h2 className="section-title">En direct des réseaux</h2>
-          </div>
-          <div className="error">{error}</div>
+        <p className="content-text">{post.content}</p>
+        <div className="social-stats">
+          <span className="views">
+            <FaEye />
+            {formatNumber(post.views)} vues
+          </span>
+          <span className="likes">
+            <FaHeart />
+            {formatNumber(post.likes)} likes
+          </span>
         </div>
-      </section>
-    )
-  }
+      </div>
+      <button 
+        className="watch-button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onVideoSelect(post.videoId);
+        }}
+      >
+        <FaPlay size={14} />
+        Regarder la vidéo
+      </button>
+    </div>
+    <a
+      href={`https://youtube.com/watch?v=${post.videoId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="youtube-link"
+      onClick={(e) => e.stopPropagation()}
+      title="Voir sur YouTube"
+    >
+      <FaExternalLinkAlt size={14} />
+    </a>
+  </article>
+);
+
+const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   return (
-    <section className="social-feed-section" id="social">
+    <section className="social-feed-section">
       <div className="social-container">
-        <div className="section-header">
-          <h2 className="section-title">En direct des réseaux</h2>
-        </div>
-        
+        <header className="section-header">
+          <h2 className="section-title">Dernières Actualités</h2>
+        </header>
         <div className="social-grid">
-          {posts.map(post => (
-            <a 
-              key={post.id} 
-              href={post.link} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="social-card"
-            >
-              <div className="social-card-header">
-                <span className="platform-icon">{getPlatformIcon(post.platform)}</span>
-                <span className="author">{post.author}</span>
-                <span className="date">{post.date}</span>
-              </div>
-              <div className="social-content">
-                <p className="content-text" data-text={post.content}>{post.content}</p>
-                <div className="social-stats">
-                  <span className="likes">❤️ {post.likes}</span>
-                  {post.shares && <span className="shares">🔄 {post.shares}</span>}
-                  {post.views && <span className="views">👁️ {post.views}</span>}
-                </div>
-              </div>
-            </a>
+          {posts.map((post) => (
+            <SocialCard
+              key={post.id}
+              post={post}
+              onVideoSelect={setSelectedVideo}
+            />
           ))}
         </div>
       </div>
+      {selectedVideo && (
+        <VideoModal
+          videoId={selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+        />
+      )}
     </section>
-  )
-} 
+  );
+};
+
+export default NewsSection; 
