@@ -13,32 +13,55 @@ app.use(express.json());
 app.get('/api/twitter/:username/tweets', async (req, res) => {
   try {
     const { username } = req.params;
+    const token = process.env.TWITTER_BEARER_TOKEN.trim();
+    
+    console.log('Tentative de récupération des tweets pour:', username);
+    console.log('Token utilisé (premiers caractères):', token.substring(0, 10) + '...');
+    
+    // Configuration de base pour les requêtes Twitter
+    const twitterConfig = {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    };
+
+    console.log('Vérification de la validité du token...');
+    try {
+      // Test de validation du token
+      await axios.get('https://api.twitter.com/2/tweets/search/recent?query=test', twitterConfig);
+      console.log('Token validé avec succès');
+    } catch (error) {
+      console.error('Erreur de validation du token:', {
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw new Error('Token invalide ou problème d\'authentification');
+    }
     
     // D'abord, obtenir l'ID de l'utilisateur
+    console.log('Recherche de l\'ID utilisateur pour:', username);
     const userResponse = await axios.get(
       `https://api.twitter.com/2/users/by/username/${username}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      twitterConfig
     );
+
+    console.log('Réponse de la recherche utilisateur:', userResponse.data);
 
     if (!userResponse.data.data) {
       throw new Error('Utilisateur non trouvé');
     }
 
     const userId = userResponse.data.data.id;
+    console.log('ID utilisateur trouvé:', userId);
 
     // Ensuite, obtenir les tweets
+    console.log('Récupération des tweets pour l\'utilisateur:', userId);
     const response = await axios.get(
       `https://api.twitter.com/2/users/${userId}/tweets`,
       {
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
+        ...twitterConfig,
         params: {
           'tweet.fields': 'created_at,public_metrics',
           'max_results': 5,
@@ -47,13 +70,27 @@ app.get('/api/twitter/:username/tweets', async (req, res) => {
       }
     );
 
+    console.log('Tweets récupérés avec succès');
+    
     if (!response.data.data) {
       return res.json({ data: [] });
     }
 
     res.json(response.data);
   } catch (error) {
-    console.error('Erreur Twitter:', error.response?.data || error.message);
+    console.error('Erreur Twitter détaillée:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      config: {
+        url: error.config?.url,
+        headers: {
+          ...error.config?.headers,
+          Authorization: 'Bearer [MASQUÉ]' // On masque le token dans les logs
+        }
+      }
+    });
     res.status(500).json({ 
       error: 'Erreur lors de la récupération des tweets',
       details: error.response?.data || error.message 
