@@ -175,7 +175,7 @@ export const Hero = () => {
         {hasMore && (
           <div className="load-more-container">
             <button 
-              className={`load-more-btn ${isLoadingMore ? 'loading' : ''}`}
+              className={`load-more-button ${isLoadingMore ? 'loading' : ''}`}
               onClick={loadMore}
               disabled={isLoadingMore}
             >

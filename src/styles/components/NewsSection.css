@@ -317,21 +317,6 @@
   overflow-x: hidden;
 }
 
-.social-feed-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, 
-    transparent,
-    rgba(102, 227, 255, 0.2),
-    rgba(102, 227, 255, 0.5),
-    rgba(102, 227, 255, 0.2),
-    transparent
-  );
-}
 
 .social-container {
   width: min(var(--max-width), 100% - (var(--padding-x) * 2));

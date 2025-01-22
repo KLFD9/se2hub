@@ -225,7 +225,7 @@ export const FeaturesGrid = () => {
         </div>
 
         <div className="mods-cta">
-          <button className="load-more-btn">
+          <button className="load-more-button">
             Charger plus de mods
           </button>
         </div>
