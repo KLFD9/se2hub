@@ -3,7 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import NewsSection from './components/NewsSection';
 import { FeaturesGrid } from './components/FeaturesGrid';
-import { ServerRentalSection } from './components/ServerRentalSection';
+// import { ServerRentalSection } from './components/ServerRentalSection';
 import { Footer } from './components/Footer'
 import './styles/App.css'
 import React, { useEffect, useState } from 'react';
@@ -49,7 +49,7 @@ const App: React.FC = () => {
             <NewsSection posts={posts} />
           )}
           <FeaturesGrid />
-          <ServerRentalSection />
+          {/* <ServerRentalSection /> */}
         </main>
         <Footer />
       </div>
