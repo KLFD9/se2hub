@@ -80,7 +80,7 @@ const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
   const [displayedPosts, setDisplayedPosts] = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const postsPerPage = 5;
+  const postsPerPage = 6;
 
   useEffect(() => {
     setIsLoading(true);
@@ -107,12 +107,13 @@ const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
     <section className="social-feed-section">
       <div className="social-container">
         <header className="section-header">
-          <h2 className="section-title">Dernières Actualités</h2>
+          <h2 className="section-title">Youtube Channel</h2>
         </header>
         <div className="social-grid">
           {isLoading && displayedPosts.length === 0 ? (
             <>
               <SkeletonCard isFirst={true} />
+              <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
