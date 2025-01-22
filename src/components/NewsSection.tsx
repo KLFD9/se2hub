@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaYoutube, FaPlay, FaExternalLinkAlt, FaEye, FaHeart } from 'react-icons/fa';
 import { formatNumber } from '../utils/formatters';
 import { SocialPost } from '../services/socialMedia';
 import VideoModal from './VideoModal';
+import SkeletonCard from './SkeletonCard';
 import '../styles/components/NewsSection.css';
 
 interface CardProps {
@@ -76,6 +77,31 @@ const SocialCard: React.FC<CardProps> = ({ post, onVideoSelect }) => (
 
 const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [displayedPosts, setDisplayedPosts] = useState<SocialPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 5;
+
+  useEffect(() => {
+    setIsLoading(true);
+    // Simuler un délai de chargement pour montrer le skeleton
+    setTimeout(() => {
+      setDisplayedPosts(posts.slice(0, postsPerPage));
+      setIsLoading(false);
+    }, 1000);
+  }, [posts]);
+
+  const loadMore = () => {
+    setIsLoading(true);
+    const nextPage = currentPage + 1;
+    setTimeout(() => {
+      setDisplayedPosts(posts.slice(0, nextPage * postsPerPage));
+      setCurrentPage(nextPage);
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const hasMorePosts = posts.length > displayedPosts.length;
 
   return (
     <section className="social-feed-section">
@@ -84,14 +110,43 @@ const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
           <h2 className="section-title">Dernières Actualités</h2>
         </header>
         <div className="social-grid">
-          {posts.map((post) => (
-            <SocialCard
-              key={post.id}
-              post={post}
-              onVideoSelect={setSelectedVideo}
-            />
-          ))}
+          {isLoading && displayedPosts.length === 0 ? (
+            <>
+              <SkeletonCard isFirst={true} />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              {displayedPosts.map((post) => (
+                <SocialCard
+                  key={post.id}
+                  post={post}
+                  onVideoSelect={setSelectedVideo}
+                />
+              ))}
+              {isLoading && (
+                <>
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </>
+              )}
+            </>
+          )}
         </div>
+        {hasMorePosts && (
+          <div className="load-more-container">
+            <button 
+              className="load-more-button"
+              onClick={loadMore}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Chargement...' : 'Charger plus'}
+            </button>
+          </div>
+        )}
       </div>
       {selectedVideo && (
         <VideoModal
