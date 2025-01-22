@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaYoutube, FaPlay, FaExternalLinkAlt, FaEye, FaHeart } from 'react-icons/fa';
-import { formatDate, formatNumber } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
 import { SocialPost } from '../services/socialMedia';
 import VideoModal from './VideoModal';
 import '../styles/components/NewsSection.css';
@@ -25,22 +25,29 @@ const SocialCard: React.FC<CardProps> = ({ post, onVideoSelect }) => (
       </button>
     </div>
     <div className="card-overlay">
+      <div className="social-card-header">
+        <FaYoutube className="platform-icon" />
+        <span className="author">{post.author}</span>
+      </div>
       <div className="card-content">
-        <div className="social-card-header">
-          <FaYoutube className="platform-icon" />
-          <span className="author">{post.author}</span>
-          <span className="date">{formatDate(post.date)}</span>
-        </div>
         <p className="content-text">{post.content}</p>
         <div className="social-stats">
+          <span className="date">{post.date}</span>
           <span className="views">
             <FaEye />
-            {formatNumber(post.views)} vues
+            <span>{formatNumber(post.views)} vues</span>
           </span>
           <span className="likes">
             <FaHeart />
-            {formatNumber(post.likes)} likes
+            <span>{formatNumber(post.likes)} likes</span>
           </span>
+          {post.avatar && (
+            <img 
+              src={post.avatar} 
+              alt={`Avatar de ${post.author}`} 
+              className="creator-avatar"
+            />
+          )}
         </div>
       </div>
       <button 

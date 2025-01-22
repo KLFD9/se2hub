@@ -10,6 +10,7 @@ export interface SocialPost {
   views?: number;
   videoId: string;
   thumbnail: string;
+  avatar: string;
 }
 
 interface YouTubeChannelResponse {
@@ -17,6 +18,13 @@ interface YouTubeChannelResponse {
     contentDetails?: {
       relatedPlaylists?: {
         uploads: string;
+      };
+    };
+    snippet?: {
+      thumbnails?: {
+        default: {
+          url: string;
+        };
       };
     };
   }[];
@@ -64,24 +72,27 @@ const youtubeApi = axios.create({
   }
 });
 
-async function getChannelUploadsPlaylistId(channelId: string): Promise<string | null> {
+async function getChannelUploadsPlaylistId(channelId: string): Promise<{ playlistId: string | null; avatar: string | null }> {
   try {
     console.log('Récupération de la playlist pour la chaîne:', channelId);
     const response = await youtubeApi.get<YouTubeChannelResponse>('/channels', {
       params: {
         id: channelId,
-        part: 'contentDetails',
+        part: 'contentDetails,snippet',
       }
     });
 
     console.log('Réponse de l\'API channels:', response.data);
-    return response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || null;
+    return {
+      playlistId: response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || null,
+      avatar: response.data.items?.[0]?.snippet?.thumbnails?.default?.url || null
+    };
   } catch (error) {
     console.error('Erreur lors de la récupération de la playlist:', error);
     if (axios.isAxiosError(error)) {
       console.error('Détails de l\'erreur:', error.response?.data);
     }
-    return null;
+    return { playlistId: null, avatar: null };
   }
 }
 
@@ -93,8 +104,8 @@ export async function getYoutubePosts(): Promise<SocialPost[]> {
       try {
         console.log(`Récupération des vidéos pour la chaîne: ${channelId}`);
         
-        // 1. Obtenir l'ID de la playlist "Uploads" de la chaîne
-        const uploadsPlaylistId = await getChannelUploadsPlaylistId(channelId);
+        // 1. Obtenir l'ID de la playlist "Uploads" de la chaîne et l'avatar
+        const { playlistId: uploadsPlaylistId, avatar } = await getChannelUploadsPlaylistId(channelId);
         
         if (!uploadsPlaylistId) {
           console.warn(`Impossible de trouver la playlist uploads pour la chaîne: ${channelId}`);
@@ -132,12 +143,19 @@ export async function getYoutubePosts(): Promise<SocialPost[]> {
               id: videoId,
               platform: 'youtube',
               author: item.snippet.channelTitle,
-              date: new Date(item.snippet.publishedAt).toLocaleDateString('fr-FR'),
+              date: new Date(item.snippet.publishedAt).toLocaleString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
               content: item.snippet.title,
               likes: parseInt(stats.likeCount) || 0,
               views: parseInt(stats.viewCount) || 0,
               videoId: videoId,
-              thumbnail: item.snippet.thumbnails.high.url
+              thumbnail: item.snippet.thumbnails.high.url,
+              avatar: avatar || ''
             });
           }
         }

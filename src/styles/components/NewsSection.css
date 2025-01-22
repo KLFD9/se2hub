@@ -345,7 +345,14 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: -0.5rem;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 4rem;
+  background: rgba(13, 17, 23, 0.7);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
 }
 
 .platform-icon {
@@ -364,14 +371,20 @@
 .date {
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.6);
-  margin-left: auto;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.5rem);
+  background: rgba(13, 17, 23, 0.7);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
 }
 
 .content-text {
   font-size: 1.1rem;
   line-height: 1.5;
   color: #fff;
-  margin: 0;
+  margin: 1.5rem 0 1rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -383,37 +396,36 @@
 }
 
 .social-stats {
+  position: relative;
   display: flex;
-  gap: 1.5rem;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 0.5rem;
   align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
   border-top: 1px solid rgba(102, 227, 255, 0.1);
   padding-top: 0.75rem;
 }
 
-/* Styles spéciaux pour la première carte */
-.social-card:first-child .content-text {
-  font-size: 1.4rem;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  margin-bottom: 0.5rem;
-}
-
-.social-card:first-child .social-stats {
-  font-size: 1rem;
-}
-
-.social-stats span {
+.views, .likes {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.social-stats svg {
+.views svg, .likes svg {
   font-size: 1.1rem;
   color: #66e3ff;
+}
+
+.creator-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: auto;
+  border: 1px solid rgba(102, 227, 255, 0.2);
+  background: rgba(13, 17, 23, 0.3);
 }
 
 .watch-button {
