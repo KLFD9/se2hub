@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const cheerio = require('cheerio');
 require('dotenv').config();
 
 const app = express();
@@ -8,7 +9,7 @@ const PORT = process.env.PORT || 3001;
 
 // Configuration CORS détaillée
 app.use(cors({
-  origin: 'http://localhost:5173', // URL du frontend
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -141,6 +142,47 @@ app.get('/api/youtube/:channelId/videos', async (req, res) => {
 // Route de test
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Le serveur fonctionne correctement!' });
+});
+
+const WP_API_URL = 'https://2.spaceengineersgame.com/wp-json/wp/v2';
+
+app.get('/api/news', async (req, res) => {
+  try {
+    const response = await axios.get('https://2.spaceengineersgame.com/news/');
+    const $ = cheerio.load(response.data);
+    const posts = [];
+
+    $('.post-card').each((i, element) => {
+      const $element = $(element);
+      const title = $element.find('.post-card-title').text().trim();
+      const excerpt = $element.find('.post-card-excerpt').text().trim();
+      const image = $element.find('img').attr('src') || '/default-image.jpg';
+      const date = $element.find('.post-card-meta time').attr('datetime');
+      const category = $element.find('.post-card-primary-tag').text().trim();
+      const tags = [];
+      
+      $element.find('.post-card-tags .post-card-tag').each((_, tag) => {
+        tags.push($(tag).text().trim());
+      });
+
+      posts.push({
+        id: i + 1,
+        title,
+        category: category || 'News',
+        date,
+        content: excerpt,
+        excerpt: excerpt.slice(0, 150) + '...',
+        image,
+        trending: i < 2, // Les 2 premiers articles sont marqués comme trending
+        tags
+      });
+    });
+
+    res.json(posts);
+  } catch (error) {
+    console.error('Erreur lors du scraping des actualités:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des actualités' });
+  }
 });
 
 app.listen(PORT, () => {

@@ -701,4 +701,33 @@
     padding: 0.6rem 1.5rem;
     font-size: 0.8rem;
   }
+}
+
+.error-message {
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.error-message p {
+  color: #ff3333;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.error-message button {
+  background: #ff3333;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.error-message button:hover {
+  background: #cc0000;
 } 

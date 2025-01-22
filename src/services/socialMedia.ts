@@ -74,7 +74,6 @@ const youtubeApi = axios.create({
 
 async function getChannelUploadsPlaylistId(channelId: string): Promise<{ playlistId: string | null; avatar: string | null }> {
   try {
-    console.log('Récupération de la playlist pour la chaîne:', channelId);
     const response = await youtubeApi.get<YouTubeChannelResponse>('/channels', {
       params: {
         id: channelId,
@@ -82,7 +81,6 @@ async function getChannelUploadsPlaylistId(channelId: string): Promise<{ playlis
       }
     });
 
-    console.log('Réponse de l\'API channels:', response.data);
     return {
       playlistId: response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || null,
       avatar: response.data.items?.[0]?.snippet?.thumbnails?.default?.url || null
@@ -102,13 +100,11 @@ export async function getYoutubePosts(): Promise<SocialPost[]> {
     
     for (const channelId of YOUTUBE_CHANNEL_IDS) {
       try {
-        console.log(`Récupération des vidéos pour la chaîne: ${channelId}`);
-        
+
         // 1. Obtenir l'ID de la playlist "Uploads" de la chaîne et l'avatar
         const { playlistId: uploadsPlaylistId, avatar } = await getChannelUploadsPlaylistId(channelId);
         
         if (!uploadsPlaylistId) {
-          console.warn(`Impossible de trouver la playlist uploads pour la chaîne: ${channelId}`);
           continue;
         }
 
@@ -122,7 +118,6 @@ export async function getYoutubePosts(): Promise<SocialPost[]> {
         });
 
         if (!playlistResponse.data.items || playlistResponse.data.items.length === 0) {
-          console.warn(`Pas de vidéos trouvées dans la playlist de la chaîne: ${channelId}`);
           continue;
         }
 

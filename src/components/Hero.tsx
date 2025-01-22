@@ -1,81 +1,10 @@
 import { useState, useEffect } from 'react'
 import { BiTime, BiShare } from 'react-icons/bi'
 import { FiTrendingUp } from 'react-icons/fi'
+import { fetchNews } from '../services/newsService'
+import { FeaturedPost } from '../types/news'
 import '../styles/components/Hero.css'
 
-interface FeaturedPost {
-  id: number
-  title: string
-  category: string
-  date: string
-  readTime: string
-  excerpt: string
-  image: string
-  trending?: boolean
-  isRead?: boolean
-  tags?: string[]
-}
-
-const featuredPosts: FeaturedPost[] = [
-  {
-    id: 1,
-    title: "Nouveau Système de Construction: Une Révolution dans l'Ingénierie Spatiale",
-    category: "Mise à Jour Majeure",
-    date: "15 Mars 2024",
-    readTime: "5 min",
-    excerpt: "Découvrez comment le nouveau système de construction va transformer votre expérience de jeu...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/1.png",
-    trending: true,
-    isRead: false,
-    tags: ['Construction', 'Mise à jour', 'Gameplay']
-  },
-  {
-    id: 2,
-    title: "Guide Complet: Optimisation des Stations Spatiales en 2024",
-    category: "Guide",
-    date: "14 Mars 2024",
-    readTime: "8 min",
-    excerpt: "Les meilleures pratiques pour concevoir et gérer des stations spatiales efficaces...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/3.png"
-  },
-  {
-    id: 3,
-    title: "Intelligence Artificielle des Drones: Mise à Jour Majeure",
-    category: "Fonctionnalités",
-    date: "13 Mars 2024",
-    readTime: "6 min",
-    excerpt: "Les drones sont maintenant plus intelligents que jamais avec le nouveau système d'IA...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/5.png",
-    trending: true
-  },
-  {
-    id: 4,
-    title: "Les Secrets de la Production de Ressources",
-    category: "Tutoriel",
-    date: "12 Mars 2024",
-    readTime: "10 min",
-    excerpt: "Optimisez votre chaîne de production avec ces techniques avancées...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/7.png"
-  },
-  {
-    id: 5,
-    title: "Les Secrets de la Production de Ressources",
-    category: "Tutoriel",
-    date: "12 Mars 2024",
-    readTime: "10 min",
-    excerpt: "Optimisez votre chaîne de production avec ces techniques avancées...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/7.png"
-  },
-  {
-    id: 6,
-    title: "Les Secrets de la Production de Ressources",
-    category: "Tutoriel",
-    date: "12 Mars 2024",
-    readTime: "10 min",
-    excerpt: "Optimisez votre chaîne de production avec ces techniques avancées...",
-    image: "https://2.spaceengineersgame.com/wp-content/uploads/2021/01/7.png"
-  }
-]
 
 const SkeletonCard = ({ isMain = false }: { isMain?: boolean }) => (
   <article className={`featured-card skeleton-card ${isMain ? 'skeleton-main' : 'skeleton-secondary'}`}>
@@ -115,18 +44,41 @@ export const Hero = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [displayedPosts, setDisplayedPosts] = useState<FeaturedPost[]>([])
+  const [allPosts, setAllPosts] = useState<FeaturedPost[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadInitialPosts = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      setDisplayedPosts(featuredPosts.slice(0, 4))
-      setIsInitialLoading(false)
+      try {
+        const posts = await fetchNews()
+        if (posts.length === 0) {
+          setError('Aucun article disponible pour le moment')
+        } else {
+          setAllPosts(posts)
+          setDisplayedPosts(posts.slice(0, 4))
+          setHasMore(posts.length > 4)
+          setError(null)
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des actualités:', error)
+        setError('Impossible de charger les actualités')
+      } finally {
+        setIsInitialLoading(false)
+      }
     }
     loadInitialPosts()
   }, [])
 
   const handleShare = (post: FeaturedPost) => {
-    console.log('Partage:', post.title)
+    if (navigator.share) {
+      navigator.share({
+        title: post.title,
+        text: post.excerpt,
+        url: window.location.href,
+      }).catch(console.error)
+    } else {
+      console.log('Partage:', post.title)
+    }
   }
 
   const markAsRead = (postId: number) => {
@@ -135,13 +87,13 @@ export const Hero = () => {
 
   const loadMore = async () => {
     setIsLoadingMore(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     const currentLength = displayedPosts.length
-    const nextPosts = featuredPosts.slice(currentLength, currentLength + 3)
+    const nextPosts = allPosts.slice(currentLength, currentLength + 3)
     
     setDisplayedPosts(prev => [...prev, ...nextPosts])
-    setHasMore(currentLength + 3 < featuredPosts.length)
+    setHasMore(currentLength + 3 < allPosts.length)
     setIsLoadingMore(false)
   }
 
@@ -156,7 +108,12 @@ export const Hero = () => {
         </div>
 
         <div className="featured-posts">
-          {isInitialLoading ? (
+          {error ? (
+            <div className="error-message">
+              <p>{error}</p>
+              <button onClick={() => window.location.reload()}>Réessayer</button>
+            </div>
+          ) : isInitialLoading ? (
             <>
               <SkeletonCard isMain={true} />
               {[...Array(3)].map((_, i) => (

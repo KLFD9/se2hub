@@ -107,7 +107,9 @@ const NewsSection: React.FC<{ posts: SocialPost[] }> = ({ posts }) => {
     <section className="social-feed-section">
       <div className="social-container">
         <header className="section-header">
-          <h2 className="section-title">Youtube Channel</h2>
+          <h2 className="section-title">
+            <span className="gradient-text" data-text="Youtube Channel">Youtube Channel</span>
+          </h2>
         </header>
         <div className="social-grid">
           {isLoading && displayedPosts.length === 0 ? (
