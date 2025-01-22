@@ -55,8 +55,8 @@ export const Hero = () => {
           setError('Aucun article disponible pour le moment')
         } else {
           setAllPosts(posts)
-          setDisplayedPosts(posts.slice(0, 4))
-          setHasMore(posts.length > 4)
+          setDisplayedPosts(posts.slice(0, 7))
+          setHasMore(posts.length > 6)
           setError(null)
         }
       } catch (error) {
