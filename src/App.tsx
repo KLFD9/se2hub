@@ -1,16 +1,16 @@
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import NewsSection from './components/NewsSection';
 import { FeaturesGrid } from './components/FeaturesGrid';
-// import { ServerRentalSection } from './components/ServerRentalSection';
+import { CommunityGallery } from './components/CommunityGallery';
 import { Footer } from './components/Footer'
 import './styles/App.css'
 import React, { useEffect, useState } from 'react';
 import { getAllSocialPosts } from './services/socialMedia';
 import type { SocialPost } from './services/socialMedia';
 
-const App: React.FC = () => {
+const HomePage: React.FC = () => {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,25 +36,33 @@ const App: React.FC = () => {
   }, []);
 
   return (
+    <main>
+      <Hero />
+      {loading ? (
+        <div className="loading">Chargement des actualités...</div>
+      ) : error ? (
+        <div className="error">{error}</div>
+      ) : (
+        <NewsSection posts={posts} />
+      )}
+      <FeaturesGrid />
+    </main>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <Router>
       <div className="app">
         <Navbar />
-        <main>
-          <Hero />
-          {loading ? (
-            <div className="loading">Chargement des actualités...</div>
-          ) : error ? (
-            <div className="error">{error}</div>
-          ) : (
-            <NewsSection posts={posts} />
-          )}
-          <FeaturesGrid />
-          {/* <ServerRentalSection /> */}
-        </main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/gallery" element={<CommunityGallery />} />
+        </Routes>
         <Footer />
       </div>
     </Router>
-  )
-}
+  );
+};
 
-export default App
+export default App;
