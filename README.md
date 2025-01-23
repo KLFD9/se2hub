@@ -1,50 +1,86 @@
-# React + TypeScript + Vite
+# Engineers Hub 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Une plateforme moderne dédiée aux ingénieurs et passionnés de technologie, offrant un espace de partage de connaissances et de ressources.
 
-Currently, two official plugins are available:
+## 🌟 Fonctionnalités Principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Actuelles
 
-## Expanding the ESLint configuration
+- **Section Actualités Tech**: Agrégation et affichage des dernières nouvelles du monde technologique
+- **Location de Serveurs**: Interface de gestion pour la location de serveurs
+- **Grille de Fonctionnalités**: Présentation visuelle des services disponibles
+- **Section Héros**: Landing page moderne et responsive
+- **Intégration Réseaux Sociaux**: Connexion avec les principales plateformes sociales
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### 🔮 Fonctionnalités à Venir
 
-- Configure the top-level `parserOptions` property like this:
+- **Forum Communautaire**: Espace de discussion et d'entraide
+- **Système de Mentorat**: Mise en relation mentors/mentorés
+- **Marketplace de Ressources**: Partage de templates, scripts et outils
+- **Système de Badges**: Reconnaissance des contributions
+- **API Publique**: Pour l'intégration avec d'autres services
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 🛠 Stack Technique
+
+- **Frontend**: React + TypeScript + Vite
+- **Styling**: CSS Modules avec support responsive
+- **Backend**: Node.js avec Express
+- **State Management**: React Hooks et Context API
+- **Performance**: Optimisation avec Skeleton Loading
+
+## 📦 Installation
+
+```bash
+# Cloner le repository
+git clone [url-du-repo]
+
+# Installer les dépendances
+npm install
+
+# Variables d'environnement
+cp .env.example .env
+# Configurer les variables d'environnement nécessaires
+
+# Lancer en développement
+npm run dev
+
+# Build pour la production
+npm run build
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## 🔧 Configuration
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+Le projet nécessite les configurations suivantes:
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- Variables d'environnement pour les API keys
+- Configuration des services de news
+- Paramètres de connexion aux réseaux sociaux
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues! Voici comment participer:
+
+1. Fork du projet
+2. Création d'une branche (`git checkout -b feature/AmazingFeature`)
+3. Commit des changements (`git commit -m 'Add AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouverture d'une Pull Request
+
+## 📝 Standards de Code
+
+- Utilisation de TypeScript strict
+- Tests unitaires avec Jest
+- Respect des règles ESLint
+- Documentation des composants avec JSDoc
+
+## 📫 Contact
+
+Pour toute question ou suggestion, n'hésitez pas à:
+
+- Ouvrir une issue
+- Rejoindre notre communauté Discord
+- Nous contacter via les réseaux sociaux
+
+## 📄 Licence
+
+Ce projet est sous licence MIT - voir le fichier LICENSE.md pour plus de détails.
