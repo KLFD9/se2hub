@@ -5,6 +5,7 @@ import NewsSection from './components/NewsSection';
 import { FeaturesGrid } from './components/FeaturesGrid';
 import { CommunityGallery } from './components/CommunityGallery';
 import { Footer } from './components/Footer'
+import Spaceflix from './pages/Spaceflix';
 import './styles/App.css'
 import React, { useEffect, useState } from 'react';
 import { getAllSocialPosts } from './services/socialMedia';
@@ -58,6 +59,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gallery" element={<CommunityGallery />} />
+          <Route path="/spaceflix" element={<Spaceflix />} />
         </Routes>
         <Footer />
       </div>

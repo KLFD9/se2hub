@@ -1,6 +1,6 @@
 import { BiNews, BiHome, BiImage, BiCog } from 'react-icons/bi';
 
-const MENU_ITEMS = [
+export const MENU_ITEMS = [
   {
     label: 'Accueil',
     path: '/',
