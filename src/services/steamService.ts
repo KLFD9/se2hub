@@ -7,9 +7,11 @@ export interface SteamScreenshot {
   id: string;
   url: string;
   title: string;
+  description: string;
   author: {
     steamId: string;
     name: string;
+    profileUrl: string;
   };
   stats: {
     likes: number;
@@ -18,6 +20,7 @@ export interface SteamScreenshot {
   };
   date: string;
   tags: string[];
+  steamUrl: string;
 }
 
 interface ProxyResponse {
@@ -160,133 +163,227 @@ class SteamService {
       
       const parser = new DOMParser();
       const doc = parser.parseFromString(response.contents, 'text/html');
-      
-      // Debug: Vérifier la structure du document
-      console.log('🔍 Structure du document:', {
-        title: doc.title,
-        body: doc.body ? 'présent' : 'absent',
-        head: doc.head ? 'présent' : 'absent'
-      });
-
-      // Log d'un extrait du HTML pour debug
-      console.log('📝 Extrait du HTML:', response.contents.substring(0, 1000));
 
       const screenshots: SteamScreenshot[] = [];
       
-      // Essayer différents sélecteurs pour trouver les conteneurs d'images
-      const items = doc.querySelectorAll([
-        '.screenshot_holder',
-        '.workshopItem',
-        '.ugc',
-        '.imageWallRow',
-        '.profile_media_item',
-        '.screenshot_list_item'
-      ].join(', '));
-
+      // Sélectionner les conteneurs de captures d'écran
+      const items = doc.querySelectorAll('.apphub_Card');
       console.log(`📑 Nombre d'éléments trouvés:`, items.length);
 
       items.forEach((item, index) => {
         console.log(`\n🖼️ Traitement de l'image ${index + 1}/${items.length}`);
-        console.log('🔍 Classes de l\'élément:', item.className);
 
-        const id = item.getAttribute('data-publishedfileid') || 
-                  item.id || 
-                  item.getAttribute('data-ugcid') || 
-                  `${Date.now()}-${index}`;
+        // Fonction utilitaire pour extraire le texte avec XPath
+        const getXPathText = (xpath: string): string => {
+          const result = document.evaluate(
+            xpath,
+            item,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+          );
+          return result.singleNodeValue?.textContent?.trim() || '';
+        };
 
-        // Essayer différents sélecteurs pour l'image
-        const imageElement = item.querySelector([
-          '.workshopItemPreviewImage',
-          '.screenshot_holder img',
-          '.ugcScreenshotImage',
-          '.screenshotHandle img',
-          'img[src*="steamusercontent"]',
-          'img[src*="steamcommunity"]',
-          'img'
-        ].join(', ')) as HTMLImageElement;
+        // Extraire l'ID
+        const id = item.getAttribute('data-publishedfileid') || `${Date.now()}-${index}`;
 
-        // Chercher aussi les images en background-image
-        const computedStyle = window.getComputedStyle(item);
-        const backgroundImage = computedStyle.backgroundImage.replace(/^url\(['"](.+)['"]\)$/, '$1');
-
-        const titleElement = item.querySelector([
-          '.workshopItemTitle',
-          '.title',
-          '.screenshotTitle',
-          '.ugcTitle'
-        ].join(', '));
-
-        const authorElement = item.querySelector([
-          '.workshopItemAuthorName a',
-          '.author',
-          '.screenshotAuthorName',
-          '.ugcAuthorName'
-        ].join(', '));
-
-        const statsElement = item.querySelector([
-          '.workshopItemStats',
-          '.stats',
-          '.screenshotStats',
-          '.ugcStats'
-        ].join(', '));
-
-        const dateElement = item.querySelector([
-          '.workshopItemDate',
-          '.date',
-          '.screenshotDate',
-          '.ugcDate'
-        ].join(', '));
-
-        console.log('🔍 Éléments trouvés:', {
-          image: !!imageElement,
-          backgroundImage: !!backgroundImage,
-          title: !!titleElement,
-          author: !!authorElement,
-          stats: !!statsElement,
-          date: !!dateElement
-        });
-
-        const url = this.extractImageUrl(imageElement, backgroundImage);
-        const title = titleElement?.textContent?.trim() || 'Sans titre';
-        const authorName = authorElement?.textContent?.trim() || 'Anonyme';
-        const authorId = authorElement?.getAttribute('href')?.split('/').pop() || '';
+        // Extraire la date (plusieurs méthodes)
+        let date = new Date().toISOString();
         
-        // Parse stats
-        const statsText = statsElement?.textContent || '';
-        console.log('📊 Stats brutes:', statsText);
+        // 1. Essayer d'abord l'attribut data-timestamp
+        const timestampXPath = ".//div[contains(@class, 'apphub_CardContentAuthorBlock')]//span[contains(@class, 'timeago')]/@data-timestamp";
+        const timestamp = getXPathText(timestampXPath);
+        
+        if (timestamp) {
+          date = new Date(parseInt(timestamp) * 1000).toISOString();
+          console.log('📅 Date trouvée via timestamp:', {
+            timestamp,
+            date: new Date(date).toLocaleString('fr-FR')
+          });
+        } else {
+          // 2. Essayer de trouver la date dans le texte
+          const dateXPath = ".//div[contains(@class, 'apphub_CardContentAuthorBlock')]//span[contains(@class, 'timeago')]";
+          const dateText = getXPathText(dateXPath);
+          console.log('📅 Texte de date trouvé:', dateText);
+          
+          if (dateText) {
+            try {
+              const parsedDate = new Date(dateText);
+              if (!isNaN(parsedDate.getTime())) {
+                date = parsedDate.toISOString();
+              }
+            } catch (error) {
+              console.warn('⚠️ Erreur parsing date:', error);
+            }
+          }
+        }
 
-        const likesMatch = statsText.match(/(\d+)\s+(?:favoris|likes?|votes?)/i);
-        const commentsMatch = statsText.match(/(\d+)\s+(?:commentaires?|comments?)/i);
-        const viewsMatch = statsText.match(/(\d+)\s+(?:vues?|views?|visites?)/i);
+        // Extraire l'auteur (plusieurs méthodes)
+        let authorName = '';
+        let authorLink = '';
+        
+        // 1. Essayer le lien direct de l'auteur
+        const authorXPath = ".//div[contains(@class, 'apphub_CardContentAuthorName')]//a[contains(@href, '/id/') or contains(@href, '/profiles/')]";
+        const authorElement = document.evaluate(
+          authorXPath,
+          item,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        ).singleNodeValue as HTMLAnchorElement;
+
+        if (authorElement) {
+          authorLink = authorElement.href;
+          authorName = authorElement.textContent?.trim() || '';
+          console.log('👤 Auteur trouvé via lien direct:', { authorName, authorLink });
+        }
+
+        // 2. Si pas de nom, essayer d'extraire depuis le conteneur parent
+        if (!authorName) {
+          const authorContainerXPath = ".//div[contains(@class, 'apphub_CardContentAuthorName')]";
+          authorName = getXPathText(authorContainerXPath);
+          console.log('👤 Auteur trouvé via conteneur:', authorName);
+        }
+
+        // 3. Si toujours pas de nom, extraire de l'URL
+        if (!authorName && authorLink) {
+          const matches = authorLink.match(/\/(?:id|profiles)\/([^/]+)/);
+          if (matches) {
+            authorName = decodeURIComponent(matches[1]);
+            console.log('👤 Auteur extrait de l\'URL:', authorName);
+          }
+        }
+
+        const finalAuthorName = authorName || 'Anonyme';
+        const authorId = authorLink.split('/').pop() || '';
+
+        // Extraire les vues (plusieurs méthodes)
+        let views = 0;
+        
+        // 1. Essayer le conteneur de stats spécifique
+        const viewsXPath = ".//div[contains(@class, 'apphub_CardContentViewsAndDateDetails')]//text()";
+        const statsText = getXPathText(viewsXPath);
+        console.log('📊 Texte stats brut:', statsText);
+
+        if (statsText) {
+          // Essayer plusieurs patterns
+          const patterns = [
+            /(\d+(?:,\d+)*)\s*views?/i,
+            /(\d+(?:,\d+)*)\s*vues?/i,
+            /vu\s*(\d+(?:,\d+)*)\s*fois/i,
+            /(\d+(?:,\d+)*)\s*times?/i,
+            /(\d+(?:,\d+)*)\s*visualizações/i
+          ];
+
+          for (const pattern of patterns) {
+            const match = statsText.match(pattern);
+            if (match) {
+              views = parseInt(match[1].replace(/[,.]/g, ''));
+              console.log('📊 Vues trouvées via pattern:', { pattern: pattern.toString(), views });
+              break;
+            }
+          }
+        }
+
+        // 2. Si pas de vues, essayer de trouver un élément spécifique
+        if (!views) {
+          const viewCountXPath = ".//span[contains(@class, 'viewCount')]//text()";
+          const viewCountText = getXPathText(viewCountXPath);
+          if (viewCountText) {
+            const num = parseInt(viewCountText.replace(/[^0-9]/g, ''));
+            if (!isNaN(num)) {
+              views = num;
+              console.log('📊 Vues trouvées via élément spécifique:', views);
+            }
+          }
+        }
+
+        // 3. Essayer d'extraire les vues depuis le texte complet
+        if (!views) {
+          const fullTextXPath = ".//div[contains(@class, 'apphub_CardContentMain')]//text()";
+          const fullText = getXPathText(fullTextXPath);
+          console.log('📊 Texte complet:', fullText);
+          
+          const viewMatch = fullText.match(/(\d+(?:,\d+)*)\s*(?:views?|vues?|fois)/i);
+          if (viewMatch) {
+            views = parseInt(viewMatch[1].replace(/[,.]/g, ''));
+            console.log('📊 Vues trouvées dans le texte complet:', views);
+          }
+        }
+
+        // Extraire l'URL de l'image
+        const imageElement = item.querySelector('.apphub_CardContentPreviewImage') as HTMLImageElement;
+        const url = this.extractImageUrl(imageElement);
+        
+        // Extraire le titre et la description
+        const titleElement = item.querySelector('.apphub_CardContentTitle');
+        const descriptionElement = item.querySelector('.apphub_CardTextContent');
+        let title = titleElement?.textContent?.trim() || '';
+        const description = descriptionElement?.textContent?.trim() || '';
+
+        if (!title) {
+          if (description) {
+            title = description.length > 50 ? 
+              description.substring(0, 47) + '...' : 
+              description;
+          } else {
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('fr-FR', { 
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
+            title = `Création du ${formattedDate}`;
+          }
+        }
+
+        // Extraire l'URL Steam de la capture d'écran
+        const screenshotLink = item.querySelector('.apphub_CardContentPreviewImage')?.closest('a')?.getAttribute('href') || '';
+        
+        // Extraire les votes (likes)
+        const votesElement = item.querySelector('.apphub_CardRating');
+        const votes = votesElement ? parseInt(votesElement.textContent?.trim() || '0') : 0;
+        
+        // Extraire les commentaires
+        const commentsElement = item.querySelector('.apphub_CardCommentCount');
+        const comments = commentsElement ? parseInt(commentsElement.textContent?.trim() || '0') : 0;
+        
+        // Extraire les tags
+        const tags = Array.from(item.querySelectorAll('.apphub_CardContentMoreLink'))
+          .map(tag => tag.textContent?.trim() || '')
+          .filter(Boolean);
 
         const screenshot: SteamScreenshot = {
           id,
           url,
           title,
+          description,
           author: {
             steamId: authorId,
-            name: authorName,
+            name: finalAuthorName,
+            profileUrl: authorLink
           },
           stats: {
-            likes: likesMatch ? parseInt(likesMatch[1]) : 0,
-            comments: commentsMatch ? parseInt(commentsMatch[1]) : 0,
-            views: viewsMatch ? parseInt(viewsMatch[1]) : 0,
+            likes: votes,
+            comments: comments,
+            views: views,
           },
-          date: dateElement?.textContent?.trim() || new Date().toISOString(),
-          tags: Array.from(item.querySelectorAll([
-            '.workshopItemTag',
-            '.tag',
-            '.screenshotTag',
-            '.ugcTag'
-          ].join(', ')))
-            .map(tag => tag.textContent?.trim() || '')
-            .filter(Boolean),
+          date,
+          tags,
+          steamUrl: screenshotLink
         };
 
         console.log('📸 Screenshot traité:', {
           title: screenshot.title,
-          url: screenshot.url.substring(0, 50) + '...',
-          stats: screenshot.stats
+          author: screenshot.author.name,
+          stats: screenshot.stats,
+          date: screenshot.date,
+          rawHTML: {
+            dateSection: getXPathText(".//div[contains(@class, 'apphub_CardContentAuthorBlock')]"),
+            authorSection: getXPathText(".//div[contains(@class, 'apphub_CardContentAuthorName')]"),
+            statsSection: statsText
+          }
         });
 
         if (url) {
