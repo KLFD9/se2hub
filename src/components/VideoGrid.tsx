@@ -1,7 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { YouTubeVideo } from '../services/youtubeService';
 import VideoModal from './VideoModal';
-import { FaPlay, FaPlus, FaThumbsUp, FaChevronLeft, FaChevronRight, FaRocket, FaTools, FaUserAstronaut, FaInfoCircle, FaNewspaper, FaStar, FaSpaceShuttle, FaChartBar } from 'react-icons/fa';
+import { 
+    FaPlay, 
+    FaChevronLeft, 
+    FaChevronRight, 
+    FaTools, 
+    FaUserAstronaut, 
+    FaInfoCircle, 
+    FaNewspaper, 
+    FaStar, 
+    FaSpaceShuttle, 
+    FaChartBar 
+} from 'react-icons/fa';
 import '../styles/components/VideoGrid.css';
 
 interface VideoRowProps {
@@ -11,17 +22,38 @@ interface VideoRowProps {
 }
 
 const VideoRow: React.FC<VideoRowProps> = ({ title, videos, icon }) => {
-    const [scrollPosition, setScrollPosition] = useState(0);
     const rowRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(true);
+
+    const checkScrollButtons = () => {
+        if (!rowRef.current) return;
+        
+        const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+        setCanScrollLeft(scrollLeft > 0);
+        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    };
+
+    useEffect(() => {
+        checkScrollButtons();
+        const handleResize = () => checkScrollButtons();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const scroll = (direction: 'left' | 'right') => {
         if (!rowRef.current) return;
         
-        const scrollAmount = direction === 'left' ? -800 : 800;
-        const newPosition = scrollPosition + scrollAmount;
+        const { clientWidth } = rowRef.current;
+        const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
         
-        rowRef.current.style.transform = `translateX(${newPosition}px)`;
-        setScrollPosition(newPosition);
+        rowRef.current.scrollBy({
+            left: scrollAmount,
+            behavior: 'smooth'
+        });
+
+        // Vérifier les boutons après le défilement
+        setTimeout(checkScrollButtons, 300);
     };
 
     return (
@@ -33,17 +65,33 @@ const VideoRow: React.FC<VideoRowProps> = ({ title, videos, icon }) => {
                 </h3>
             </div>
             <div className="video-slider">
-                <button className="slider-button prev" onClick={() => scroll('left')}>
-                    <FaChevronLeft />
-                </button>
-                <div className="video-grid" ref={rowRef}>
+                {canScrollLeft && (
+                    <button 
+                        className="slider-button prev" 
+                        onClick={() => scroll('left')}
+                        aria-label="Précédent"
+                    >
+                        <FaChevronLeft />
+                    </button>
+                )}
+                <div 
+                    className="video-grid" 
+                    ref={rowRef}
+                    onScroll={checkScrollButtons}
+                >
                     {videos.map((video) => (
                         <VideoCard key={video.id} video={video} />
                     ))}
                 </div>
-                <button className="slider-button next" onClick={() => scroll('right')}>
-                    <FaChevronRight />
-                </button>
+                {canScrollRight && (
+                    <button 
+                        className="slider-button next" 
+                        onClick={() => scroll('right')}
+                        aria-label="Suivant"
+                    >
+                        <FaChevronRight />
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -55,8 +103,6 @@ interface VideoCardProps {
 
 const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
-    const [isSaved, setIsSaved] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
     const formatViews = (views: number = 0) => {
@@ -84,35 +130,24 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
                 className="video-card"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
+                onClick={() => setShowModal(true)}
             >
                 <div className="thumbnail-container">
                     <img src={video.thumbnail} alt={video.title} />
                     {isHovered && (
                         <div className="hover-info">
                             <h3>{video.title}</h3>
-                            <p>{video.channelTitle}</p>
+                            <p className="channel-title">{video.channelTitle}</p>
                             <div className="video-stats">
                                 <span>{formatViews(video.viewCount)}</span>
                                 <span>•</span>
                                 <span>{formatDate(video.publishedAt)}</span>
                             </div>
-                            <div className="video-actions">
-                                <button className="action-button" onClick={() => setShowModal(true)}>
-                                    <FaPlay />
-                                </button>
-                                <button 
-                                    className={`action-button ${isSaved ? 'active' : ''}`}
-                                    onClick={() => setIsSaved(!isSaved)}
-                                >
-                                    <FaPlus />
-                                </button>
-                                <button 
-                                    className={`action-button ${isLiked ? 'active' : ''}`}
-                                    onClick={() => setIsLiked(!isLiked)}
-                                >
-                                    <FaThumbsUp />
-                                </button>
-                            </div>
+                            <p className="video-description">
+                                {video.description.length > 120 
+                                    ? `${video.description.substring(0, 120)}...` 
+                                    : video.description}
+                            </p>
                         </div>
                     )}
                 </div>
