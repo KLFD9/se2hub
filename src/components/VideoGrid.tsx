@@ -7,13 +7,13 @@ import {
     FaChevronRight, 
     FaTools, 
     FaUserAstronaut, 
-    FaInfoCircle, 
     FaNewspaper, 
     FaStar, 
     FaSpaceShuttle, 
     FaChartBar 
 } from 'react-icons/fa';
 import '../styles/components/VideoGrid.css';
+import { createPortal } from 'react-dom';
 
 interface VideoRowProps {
     title: string;
@@ -35,10 +35,37 @@ const VideoRow: React.FC<VideoRowProps> = ({ title, videos, icon }) => {
     };
 
     useEffect(() => {
+        const element = rowRef.current;
+        if (!element) return;
+
+        // Options pour les événements avec passive: true
+        const options = { passive: true };
+
+        // Gestionnaires d'événements
+        const handleScroll = () => {
+            requestAnimationFrame(checkScrollButtons);
+        };
+
+        const handleResize = () => {
+            requestAnimationFrame(checkScrollButtons);
+        };
+
+        // Ajout des écouteurs d'événements avec les options
+        element.addEventListener('scroll', handleScroll, options);
+        element.addEventListener('touchstart', handleScroll, options);
+        element.addEventListener('touchmove', handleScroll, options);
+        window.addEventListener('resize', handleResize, options);
+
+        // Vérification initiale
         checkScrollButtons();
-        const handleResize = () => checkScrollButtons();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+
+        // Nettoyage
+        return () => {
+            element.removeEventListener('scroll', handleScroll);
+            element.removeEventListener('touchstart', handleScroll);
+            element.removeEventListener('touchmove', handleScroll);
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     const scroll = (direction: 'left' | 'right') => {
@@ -52,8 +79,10 @@ const VideoRow: React.FC<VideoRowProps> = ({ title, videos, icon }) => {
             behavior: 'smooth'
         });
 
-        // Vérifier les boutons après le défilement
-        setTimeout(checkScrollButtons, 300);
+        // Utiliser requestAnimationFrame pour la vérification après le défilement
+        requestAnimationFrame(() => {
+            setTimeout(checkScrollButtons, 300);
+        });
     };
 
     return (
@@ -77,7 +106,6 @@ const VideoRow: React.FC<VideoRowProps> = ({ title, videos, icon }) => {
                 <div 
                     className="video-grid" 
                     ref={rowRef}
-                    onScroll={checkScrollButtons}
                 >
                     {videos.map((video) => (
                         <VideoCard key={video.id} video={video} />
@@ -124,16 +152,31 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         });
     };
 
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setShowModal(true);
+        document.body.style.overflow = 'hidden';
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        document.body.style.overflow = 'auto';
+    };
+
     return (
         <>
             <div 
                 className="video-card"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                onClick={() => setShowModal(true)}
+                onClick={handleClick}
             >
                 <div className="thumbnail-container">
-                    <img src={video.thumbnail} alt={video.title} />
+                    <img 
+                        src={video.thumbnail} 
+                        alt={video.title}
+                        loading="lazy"
+                    />
                     {isHovered && (
                         <div className="hover-info">
                             <h3>{video.title}</h3>
@@ -152,11 +195,16 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
                     )}
                 </div>
             </div>
-            {showModal && (
-                <VideoModal
-                    videoId={video.id}
-                    onClose={() => setShowModal(false)}
-                />
+            {showModal && createPortal(
+                <div className="video-modal-overlay" onClick={handleCloseModal}>
+                    <div className="video-modal-content" onClick={e => e.stopPropagation()}>
+                        <VideoModal
+                            videoId={video.id}
+                            onClose={handleCloseModal}
+                        />
+                    </div>
+                </div>,
+                document.body
             )}
         </>
     );
@@ -190,9 +238,6 @@ const FeaturedHeader: React.FC<{ video: YouTubeVideo }> = ({ video }) => {
                         onClick={() => setShowModal(true)}
                     >
                         <FaPlay /> Lecture
-                    </button>
-                    <button className="featured-button secondary">
-                        <FaInfoCircle /> Plus d'infos
                     </button>
                 </div>
             </div>
