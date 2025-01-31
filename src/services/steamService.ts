@@ -62,17 +62,14 @@ class SteamService {
     const cacheKey = encodeURIComponent(url);
 
     if (cache[cacheKey] && now - cache[cacheKey].timestamp < CACHE_DURATION) {
-      console.log('📦 Utilisation du cache pour:', url);
       return cache[cacheKey].data;
     }
 
     const pendingRequest = pendingRequests[cacheKey];
     if (pendingRequest) {
-      console.log('⏳ Requête en cours pour:', url);
       return pendingRequest;
     }
 
-    console.log('🌐 Nouvelle requête pour:', url);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -94,7 +91,6 @@ class SteamService {
           }
 
           const contents = await response.text();
-          console.log('📄 Contenu reçu, taille:', contents.length, 'caractères');
 
           const data: ProxyResponse = {
             contents,
@@ -129,19 +125,7 @@ class SteamService {
   private extractImageUrl(imageElement: HTMLImageElement | null, fallbackSrc: string | null = null): string {
     const url = imageElement?.src || fallbackSrc || '';
     if (!url) {
-      console.log('⚠️ Pas d\'URL d\'image trouvée');
       return '';
-    }
-    
-    console.log('🖼️ URL d\'image trouvée:', url);
-
-    // Convertir les miniatures en images haute résolution
-    if (url.includes('steamuserimages-a.akamaihd.net')) {
-      const newUrl = url.replace(/\?t=\d+$/, '')  // Supprimer le timestamp
-                       .replace(/\.resizedimage/, '') // Supprimer le suffixe de redimensionnement
-                       .replace(/(\d+x\d+)/, '1920x1080'); // Remplacer la taille
-      console.log('🔄 URL convertie en haute résolution:', newUrl);
-      return newUrl;
     }
     return url;
   }
@@ -153,10 +137,7 @@ class SteamService {
   }): Promise<SteamScreenshot[]> {
     const { page = 1, sort = 'popular', period = 'all' } = params;
     
-    try {
-      console.log('🚀 Récupération des captures d\'écran Steam...');
-      console.log('📋 Paramètres:', { page, sort, period });
-      const fetchStartTime = performance.now();
+    try {     
 
       const url = `https://steamcommunity.com/app/${this.config.appId}/screenshots/?p=${page}&browsefilter=${sort}&period=${period}`;
       const response = await this.fetchWithCache(url);
@@ -168,10 +149,8 @@ class SteamService {
       
       // Sélectionner les conteneurs de captures d'écran
       const items = doc.querySelectorAll('.apphub_Card');
-      console.log(`📑 Nombre d'éléments trouvés:`, items.length);
 
       items.forEach((item, index) => {
-        console.log(`\n🖼️ Traitement de l'image ${index + 1}/${items.length}`);
 
         // Fonction utilitaire pour extraire le texte avec XPath
         const getXPathText = (xpath: string): string => {
@@ -197,15 +176,10 @@ class SteamService {
         
         if (timestamp) {
           date = new Date(parseInt(timestamp) * 1000).toISOString();
-          console.log('📅 Date trouvée via timestamp:', {
-            timestamp,
-            date: new Date(date).toLocaleString('fr-FR')
-          });
         } else {
           // 2. Essayer de trouver la date dans le texte
           const dateXPath = ".//div[contains(@class, 'apphub_CardContentAuthorBlock')]//span[contains(@class, 'timeago')]";
           const dateText = getXPathText(dateXPath);
-          console.log('📅 Texte de date trouvé:', dateText);
           
           if (dateText) {
             try {
@@ -214,7 +188,6 @@ class SteamService {
                 date = parsedDate.toISOString();
               }
             } catch (error) {
-              console.warn('⚠️ Erreur parsing date:', error);
             }
           }
         }
@@ -236,14 +209,12 @@ class SteamService {
         if (authorElement) {
           authorLink = authorElement.href;
           authorName = authorElement.textContent?.trim() || '';
-          console.log('👤 Auteur trouvé via lien direct:', { authorName, authorLink });
         }
 
         // 2. Si pas de nom, essayer d'extraire depuis le conteneur parent
         if (!authorName) {
           const authorContainerXPath = ".//div[contains(@class, 'apphub_CardContentAuthorName')]";
           authorName = getXPathText(authorContainerXPath);
-          console.log('👤 Auteur trouvé via conteneur:', authorName);
         }
 
         // 3. Si toujours pas de nom, extraire de l'URL
@@ -251,7 +222,6 @@ class SteamService {
           const matches = authorLink.match(/\/(?:id|profiles)\/([^/]+)/);
           if (matches) {
             authorName = decodeURIComponent(matches[1]);
-            console.log('👤 Auteur extrait de l\'URL:', authorName);
           }
         }
 
@@ -264,7 +234,6 @@ class SteamService {
         // 1. Essayer le conteneur de stats spécifique
         const viewsXPath = ".//div[contains(@class, 'apphub_CardContentViewsAndDateDetails')]//text()";
         const statsText = getXPathText(viewsXPath);
-        console.log('📊 Texte stats brut:', statsText);
 
         if (statsText) {
           // Essayer plusieurs patterns
@@ -280,7 +249,6 @@ class SteamService {
             const match = statsText.match(pattern);
             if (match) {
               views = parseInt(match[1].replace(/[,.]/g, ''));
-              console.log('📊 Vues trouvées via pattern:', { pattern: pattern.toString(), views });
               break;
             }
           }
@@ -294,7 +262,6 @@ class SteamService {
             const num = parseInt(viewCountText.replace(/[^0-9]/g, ''));
             if (!isNaN(num)) {
               views = num;
-              console.log('📊 Vues trouvées via élément spécifique:', views);
             }
           }
         }
@@ -303,12 +270,10 @@ class SteamService {
         if (!views) {
           const fullTextXPath = ".//div[contains(@class, 'apphub_CardContentMain')]//text()";
           const fullText = getXPathText(fullTextXPath);
-          console.log('📊 Texte complet:', fullText);
           
           const viewMatch = fullText.match(/(\d+(?:,\d+)*)\s*(?:views?|vues?|fois)/i);
           if (viewMatch) {
             views = parseInt(viewMatch[1].replace(/[,.]/g, ''));
-            console.log('📊 Vues trouvées dans le texte complet:', views);
           }
         }
 
@@ -372,31 +337,15 @@ class SteamService {
           date,
           tags,
           steamUrl: screenshotLink
-        };
-
-        console.log('📸 Screenshot traité:', {
-          title: screenshot.title,
-          author: screenshot.author.name,
-          stats: screenshot.stats,
-          date: screenshot.date,
-          rawHTML: {
-            dateSection: getXPathText(".//div[contains(@class, 'apphub_CardContentAuthorBlock')]"),
-            authorSection: getXPathText(".//div[contains(@class, 'apphub_CardContentAuthorName')]"),
-            statsSection: statsText
-          }
-        });
+        };        
 
         if (url) {
           screenshots.push(screenshot);
         }
       });
 
-      const totalTime = performance.now() - fetchStartTime;
-      console.log(`✅ ${screenshots.length} captures d'écran récupérées en ${totalTime.toFixed(0)}ms`);
-
       return screenshots;
     } catch (error) {
-      console.error('❌ Erreur:', error instanceof Error ? error.message : 'Erreur inconnue');
       throw error;
     }
   }
@@ -409,5 +358,5 @@ class SteamService {
 
 // Créer une instance par défaut avec l'ID de Space Engineers
 export const steamService = new SteamService({
-  appId: '244850', // ID de Space Engineers
+  appId: '1133870', // ID de Space Engineers
 }); 

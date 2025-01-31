@@ -518,6 +518,7 @@
   }
 
   .gallery-filters {
+    display: none;
     transform: translateX(-100%);
     width: 100%;
     max-width: 320px;
@@ -526,15 +527,6 @@
 
   .gallery-filters.open {
     transform: translateX(0);
-  }
-
-  .filters-toggle {
-    top: auto;
-    bottom: 2rem;
-    right: 2rem;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
   }
 
   .gallery-grid {
@@ -578,26 +570,3 @@
 .view-full-image {
   display: none;
 }
-
-.filters-toggle {
-  position: fixed;
-  top: calc(var(--navbar-height) + 1rem);
-  right: 2rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 100;
-  transition: all 0.2s ease;
-}
-
-.filters-toggle:hover {
-  transform: scale(1.05);
-} 

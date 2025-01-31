@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BiHeart, BiComment, BiShow, BiUser, BiSearch, BiX, BiFilterAlt, BiReset } from 'react-icons/bi';
+import { BiHeart, BiComment, BiShow, BiUser, BiSearch, BiX, BiReset } from 'react-icons/bi';
 import { steamService, SteamScreenshot } from '../services/steamService';
 import { ImageModal } from './ImageModal';
 import '../styles/components/CommunityGallery.css';
@@ -37,7 +37,7 @@ export const CommunityGallery: React.FC = () => {
     period: 'all',
     tags: []
   });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFilterOpen] = useState(false);
 
   const fetchImages = useCallback(async (pageNum: number, isNewFilter = false) => {
     try {
@@ -106,18 +106,6 @@ export const CommunityGallery: React.FC = () => {
       tags: []
     });
   };
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (isFilterOpen && !target.closest('.gallery-filters') && !target.closest('.filters-toggle')) {
-        setIsFilterOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isFilterOpen]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -234,14 +222,6 @@ export const CommunityGallery: React.FC = () => {
       </aside>
 
       <div className="gallery-container">
-        <button
-          className="filters-toggle"
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-          aria-label="Ouvrir les filtres"
-        >
-          <BiFilterAlt />
-        </button>
-
         <main className="gallery-content">
           <div className="gallery-header">
             <h1>Galerie Communautaire</h1>
