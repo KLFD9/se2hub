@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BiHeart, BiComment, BiShow, BiUser, BiSearch, BiX, BiReset } from 'react-icons/bi';
+import { BiHeart, BiComment,BiUser, BiSearch, BiX, BiReset } from 'react-icons/bi';
 import { steamService, SteamScreenshot } from '../services/steamService';
 import { ImageModal } from './ImageModal';
 import '../styles/components/CommunityGallery.css';
@@ -256,17 +256,38 @@ export const CommunityGallery: React.FC = () => {
                       )}
                       <div className="author">
                         <div className="author-avatar">
-                          <BiUser size={16} />
+                          {image.author.avatarUrl ? (
+                            <img 
+                              src={image.author.avatarUrl} 
+                              alt={`Avatar de ${image.author.name}`}
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.style.display = 'none';
+                                const parent = img.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<BiUser size={16} color="rgba(255, 255, 255, 0.9)" />`;
+                                }
+                              }}
+                            />
+                          ) : (
+                            <BiUser size={16} color="rgba(255, 255, 255, 0.9)" />
+                          )}
                         </div>
-                        <a 
-                          href={image.author.profileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="author-link"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {image.author.name}
-                        </a>
+                        {image.author.profileUrl !== '#' ? (
+                          <a 
+                            href={image.author.profileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="author-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {image.author.name}
+                          </a>
+                        ) : (
+                          <span className="author-link">
+                            {image.author.name}
+                          </span>
+                        )}
                       </div>
                       <div className="image-stats">
                         <span title="J'aime">
@@ -274,9 +295,6 @@ export const CommunityGallery: React.FC = () => {
                         </span>
                         <span title="Commentaires">
                           <BiComment /> {formatNumber(image.stats.comments)}
-                        </span>
-                        <span title="Vues">
-                          <BiShow /> {formatNumber(image.stats.views)}
                         </span>
                       </div>
                     </div>

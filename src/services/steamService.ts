@@ -13,6 +13,7 @@ export interface SteamScreenshot {
     steamId: string;
     name: string;
     profileUrl: string;
+    avatarUrl: string;
   };
   stats: {
     likes: number;
@@ -154,31 +155,64 @@ class SteamService {
         const imageElement = getElement('.apphub_CardContentPreviewImage') as HTMLImageElement;
         const { thumbnailUrl, url } = this.extractImageUrls(imageElement);
 
-        // Extraction de l'auteur
-        const authorElement = getElement('.apphub_CardContentAuthorName a') as HTMLAnchorElement;
-        const authorLink = authorElement?.href || '';
-        const authorId = authorLink.split('/').pop() || '';
+        // Extraction améliorée de l'auteur
+        const authorContainer = getElement('.apphub_CardContentAuthorBlock') as HTMLElement;
+        const authorBlock = authorContainer?.querySelector('.apphub_friend_block') as HTMLElement;
+        const authorNameElement = authorBlock?.querySelector('.apphub_CardContentAuthorName.offline a:last-child, .apphub_CardContentAuthorName.online a:last-child') as HTMLAnchorElement;
+        const authorAvatarElement = authorBlock?.querySelector('.appHubIconHolder img') as HTMLImageElement;
+        
+        const authorLink = authorNameElement?.href || '';
+        const authorName = authorNameElement?.textContent?.trim() || '';
+        const authorAvatarUrl = authorAvatarElement?.src || '';
+
+        // Nettoyage et validation des données de l'auteur
+        const author = {
+          steamId: authorLink.split('/').filter(Boolean).pop() || '',
+          name: authorName || 'Anonyme',
+          profileUrl: authorLink || '#',
+          avatarUrl: authorAvatarUrl || ''
+        };
+
+        // Log pour debug
+        console.log('Author data:', {
+          name: authorName,
+          avatarUrl: authorAvatarUrl,
+          link: authorLink,
+          rawAuthorBlock: authorBlock?.outerHTML,
+          rawNameElement: authorNameElement?.outerHTML,
+          rawAvatarElement: authorAvatarElement?.outerHTML
+        });
+
+        // Extraction du reste des données
+        const title = getText('.apphub_CardContentTitle') || 'Sans titre';
+        const description = getText('.apphub_CardTextContent') || '';
+        const likesText = getText('.apphub_CardRating');
+        const commentsText = getText('.apphub_CardCommentCount');
+        const viewsText = getText('.apphub_CardContentViewsAndDateDetails');
+
+        const stats = {
+          likes: parseInt(likesText.replace(/[^\d]/g, '')) || 0,
+          comments: parseInt(commentsText.replace(/[^\d]/g, '')) || 0,
+          views: parseInt(viewsText.replace(/[^\d]/g, '')) || 0
+        };
+
+        const tags = Array.from(item.querySelectorAll('.apphub_CardContentMoreLink'))
+          .map(tag => tag.textContent?.trim() || '')
+          .filter(tag => tag && tag !== "Voir les captures d'écran");
+
+        const dateText = getText('.apphub_CardContentDate');
+        const date = dateText || new Date().toISOString();
 
         return {
           id: item.getAttribute('data-publishedfileid') || `${Date.now()}-${index}`,
           thumbnailUrl,
           url,
-          title: getText('.apphub_CardContentTitle') || 'Sans titre',
-          description: getText('.apphub_CardTextContent'),
-          author: {
-            steamId: authorId,
-            name: authorElement?.textContent?.trim() || 'Anonyme',
-            profileUrl: authorLink
-          },
-          stats: {
-            likes: parseInt(getText('.apphub_CardRating')) || 0,
-            comments: parseInt(getText('.apphub_CardCommentCount')) || 0,
-            views: parseInt(getText('.apphub_CardContentViewsAndDateDetails')?.replace(/\D/g, '') || '0')
-          },
-          date: getText('.apphub_CardContentDate') || new Date().toISOString(),
-          tags: Array.from(item.querySelectorAll('.apphub_CardContentMoreLink'))
-            .map(tag => tag.textContent?.trim() || '')
-            .filter(Boolean),
+          title,
+          description,
+          author,
+          stats,
+          date,
+          tags,
           steamUrl: imageElement?.closest('a')?.getAttribute('href') || ''
         };
       }).filter(screenshot => screenshot.url);
