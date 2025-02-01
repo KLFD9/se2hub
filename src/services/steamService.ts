@@ -6,6 +6,7 @@ interface SteamConfig {
 export interface SteamScreenshot {
   id: string;
   url: string;
+  thumbnailUrl: string;
   title: string;
   description: string;
   author: {
@@ -38,14 +39,10 @@ interface CacheData {
 }
 
 const CORS_PROXY = 'https://corsproxy.io/?';
-
-// Cache pour les requêtes
-const cache: { [key: string]: CacheData } = {};
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Type pour les requêtes en cours
+const CACHE_DURATION = 5 * 60 * 1000;
 type PendingRequest = Promise<ProxyResponse>;
 const pendingRequests: { [key: string]: PendingRequest } = {};
+const cache: { [key: string]: CacheData } = {};
 
 class SteamService {
   private config: SteamConfig;
@@ -57,7 +54,7 @@ class SteamService {
     };
   }
 
-  private async fetchWithCache(url: string): Promise<ProxyResponse> {
+  private async fetchWithCache(url: string, externalSignal?: AbortSignal): Promise<ProxyResponse> {
     const now = Date.now();
     const cacheKey = encodeURIComponent(url);
 
@@ -73,6 +70,13 @@ class SteamService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+    if (externalSignal) {
+      externalSignal.addEventListener('abort', () => {
+        controller.abort();
+        clearTimeout(timeoutId);
+      });
+    }
+
     try {
       const request = (async () => {
         try {
@@ -81,17 +85,14 @@ class SteamService {
               'Accept': 'text/html,application/xhtml+xml',
               'Origin': window.location.origin
             },
-            signal: controller.signal
+            signal: externalSignal || controller.signal
           });
 
           clearTimeout(timeoutId);
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
           const contents = await response.text();
-
           const data: ProxyResponse = {
             contents,
             status: {
@@ -101,11 +102,7 @@ class SteamService {
             }
           };
 
-          cache[cacheKey] = {
-            data,
-            timestamp: now
-          };
-
+          cache[cacheKey] = { data, timestamp: now };
           return data;
         } finally {
           delete pendingRequests[cacheKey];
@@ -122,241 +119,82 @@ class SteamService {
     }
   }
 
-  private extractImageUrl(imageElement: HTMLImageElement | null, fallbackSrc: string | null = null): string {
-    const url = imageElement?.src || fallbackSrc || '';
-    if (!url) {
-      return '';
-    }
-    return url;
+  private extractImageUrls(imageElement: HTMLImageElement | null): { thumbnailUrl: string; url: string } {
+    const rawUrl = imageElement?.src || '';
+    const fullUrl = rawUrl.split('?')[0];
+    return {
+      thumbnailUrl: rawUrl,
+      url: fullUrl
+    };
   }
 
-  async getScreenshots(params: {
-    page?: number;
-    sort?: 'popular' | 'newest' | 'trending';
-    period?: 'day' | 'week' | 'month' | 'all';
-  }): Promise<SteamScreenshot[]> {
+  async getScreenshots(
+    params: {
+      page?: number;
+      sort?: 'popular' | 'newest' | 'trending';
+      period?: 'day' | 'week' | 'month' | 'all';
+    },
+    options?: { signal?: AbortSignal }
+  ): Promise<SteamScreenshot[]> {
     const { page = 1, sort = 'popular', period = 'all' } = params;
     
-    try {     
-
+    try {
       const url = `https://steamcommunity.com/app/${this.config.appId}/screenshots/?p=${page}&browsefilter=${sort}&period=${period}`;
-      const response = await this.fetchWithCache(url);
+      const response = await this.fetchWithCache(url, options?.signal);
       
       const parser = new DOMParser();
       const doc = parser.parseFromString(response.contents, 'text/html');
-
-      const screenshots: SteamScreenshot[] = [];
-      
-      // Sélectionner les conteneurs de captures d'écran
       const items = doc.querySelectorAll('.apphub_Card');
 
-      items.forEach((item, index) => {
+      return Array.from(items).map((item, index) => {
+        const getElement = (selector: string) => item.querySelector(selector);
+        const getText = (selector: string) => getElement(selector)?.textContent?.trim() || '';
 
-        // Fonction utilitaire pour extraire le texte avec XPath
-        const getXPathText = (xpath: string): string => {
-          const result = document.evaluate(
-            xpath,
-            item,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null
-          );
-          return result.singleNodeValue?.textContent?.trim() || '';
-        };
+        // Extraction des URLs
+        const imageElement = getElement('.apphub_CardContentPreviewImage') as HTMLImageElement;
+        const { thumbnailUrl, url } = this.extractImageUrls(imageElement);
 
-        // Extraire l'ID
-        const id = item.getAttribute('data-publishedfileid') || `${Date.now()}-${index}`;
-
-        // Extraire la date (plusieurs méthodes)
-        let date = new Date().toISOString();
-        
-        // 1. Essayer d'abord l'attribut data-timestamp
-        const timestampXPath = ".//div[contains(@class, 'apphub_CardContentAuthorBlock')]//span[contains(@class, 'timeago')]/@data-timestamp";
-        const timestamp = getXPathText(timestampXPath);
-        
-        if (timestamp) {
-          date = new Date(parseInt(timestamp) * 1000).toISOString();
-        } else {
-          // 2. Essayer de trouver la date dans le texte
-          const dateXPath = ".//div[contains(@class, 'apphub_CardContentAuthorBlock')]//span[contains(@class, 'timeago')]";
-          const dateText = getXPathText(dateXPath);
-          
-          if (dateText) {
-            try {
-              const parsedDate = new Date(dateText);
-              if (!isNaN(parsedDate.getTime())) {
-                date = parsedDate.toISOString();
-              }
-            } catch (error) {
-            }
-          }
-        }
-
-        // Extraire l'auteur (plusieurs méthodes)
-        let authorName = '';
-        let authorLink = '';
-        
-        // 1. Essayer le lien direct de l'auteur
-        const authorXPath = ".//div[contains(@class, 'apphub_CardContentAuthorName')]//a[contains(@href, '/id/') or contains(@href, '/profiles/')]";
-        const authorElement = document.evaluate(
-          authorXPath,
-          item,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null
-        ).singleNodeValue as HTMLAnchorElement;
-
-        if (authorElement) {
-          authorLink = authorElement.href;
-          authorName = authorElement.textContent?.trim() || '';
-        }
-
-        // 2. Si pas de nom, essayer d'extraire depuis le conteneur parent
-        if (!authorName) {
-          const authorContainerXPath = ".//div[contains(@class, 'apphub_CardContentAuthorName')]";
-          authorName = getXPathText(authorContainerXPath);
-        }
-
-        // 3. Si toujours pas de nom, extraire de l'URL
-        if (!authorName && authorLink) {
-          const matches = authorLink.match(/\/(?:id|profiles)\/([^/]+)/);
-          if (matches) {
-            authorName = decodeURIComponent(matches[1]);
-          }
-        }
-
-        const finalAuthorName = authorName || 'Anonyme';
+        // Extraction de l'auteur
+        const authorElement = getElement('.apphub_CardContentAuthorName a') as HTMLAnchorElement;
+        const authorLink = authorElement?.href || '';
         const authorId = authorLink.split('/').pop() || '';
 
-        // Extraire les vues (plusieurs méthodes)
-        let views = 0;
-        
-        // 1. Essayer le conteneur de stats spécifique
-        const viewsXPath = ".//div[contains(@class, 'apphub_CardContentViewsAndDateDetails')]//text()";
-        const statsText = getXPathText(viewsXPath);
-
-        if (statsText) {
-          // Essayer plusieurs patterns
-          const patterns = [
-            /(\d+(?:,\d+)*)\s*views?/i,
-            /(\d+(?:,\d+)*)\s*vues?/i,
-            /vu\s*(\d+(?:,\d+)*)\s*fois/i,
-            /(\d+(?:,\d+)*)\s*times?/i,
-            /(\d+(?:,\d+)*)\s*visualizações/i
-          ];
-
-          for (const pattern of patterns) {
-            const match = statsText.match(pattern);
-            if (match) {
-              views = parseInt(match[1].replace(/[,.]/g, ''));
-              break;
-            }
-          }
-        }
-
-        // 2. Si pas de vues, essayer de trouver un élément spécifique
-        if (!views) {
-          const viewCountXPath = ".//span[contains(@class, 'viewCount')]//text()";
-          const viewCountText = getXPathText(viewCountXPath);
-          if (viewCountText) {
-            const num = parseInt(viewCountText.replace(/[^0-9]/g, ''));
-            if (!isNaN(num)) {
-              views = num;
-            }
-          }
-        }
-
-        // 3. Essayer d'extraire les vues depuis le texte complet
-        if (!views) {
-          const fullTextXPath = ".//div[contains(@class, 'apphub_CardContentMain')]//text()";
-          const fullText = getXPathText(fullTextXPath);
-          
-          const viewMatch = fullText.match(/(\d+(?:,\d+)*)\s*(?:views?|vues?|fois)/i);
-          if (viewMatch) {
-            views = parseInt(viewMatch[1].replace(/[,.]/g, ''));
-          }
-        }
-
-        // Extraire l'URL de l'image
-        const imageElement = item.querySelector('.apphub_CardContentPreviewImage') as HTMLImageElement;
-        const url = this.extractImageUrl(imageElement);
-        
-        // Extraire le titre et la description
-        const titleElement = item.querySelector('.apphub_CardContentTitle');
-        const descriptionElement = item.querySelector('.apphub_CardTextContent');
-        let title = titleElement?.textContent?.trim() || '';
-        const description = descriptionElement?.textContent?.trim() || '';
-
-        if (!title) {
-          if (description) {
-            title = description.length > 50 ? 
-              description.substring(0, 47) + '...' : 
-              description;
-          } else {
-            const dateObj = new Date(date);
-            const formattedDate = dateObj.toLocaleDateString('fr-FR', { 
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            });
-            title = `Création du ${formattedDate}`;
-          }
-        }
-
-        // Extraire l'URL Steam de la capture d'écran
-        const screenshotLink = item.querySelector('.apphub_CardContentPreviewImage')?.closest('a')?.getAttribute('href') || '';
-        
-        // Extraire les votes (likes)
-        const votesElement = item.querySelector('.apphub_CardRating');
-        const votes = votesElement ? parseInt(votesElement.textContent?.trim() || '0') : 0;
-        
-        // Extraire les commentaires
-        const commentsElement = item.querySelector('.apphub_CardCommentCount');
-        const comments = commentsElement ? parseInt(commentsElement.textContent?.trim() || '0') : 0;
-        
-        // Extraire les tags
-        const tags = Array.from(item.querySelectorAll('.apphub_CardContentMoreLink'))
-          .map(tag => tag.textContent?.trim() || '')
-          .filter(Boolean);
-
-        const screenshot: SteamScreenshot = {
-          id,
+        return {
+          id: item.getAttribute('data-publishedfileid') || `${Date.now()}-${index}`,
+          thumbnailUrl,
           url,
-          title,
-          description,
+          title: getText('.apphub_CardContentTitle') || 'Sans titre',
+          description: getText('.apphub_CardTextContent'),
           author: {
             steamId: authorId,
-            name: finalAuthorName,
+            name: authorElement?.textContent?.trim() || 'Anonyme',
             profileUrl: authorLink
           },
           stats: {
-            likes: votes,
-            comments: comments,
-            views: views,
+            likes: parseInt(getText('.apphub_CardRating')) || 0,
+            comments: parseInt(getText('.apphub_CardCommentCount')) || 0,
+            views: parseInt(getText('.apphub_CardContentViewsAndDateDetails')?.replace(/\D/g, '') || '0')
           },
-          date,
-          tags,
-          steamUrl: screenshotLink
-        };        
-
-        if (url) {
-          screenshots.push(screenshot);
-        }
-      });
-
-      return screenshots;
-    } catch (error) {
-      throw error;
+          date: getText('.apphub_CardContentDate') || new Date().toISOString(),
+          tags: Array.from(item.querySelectorAll('.apphub_CardContentMoreLink'))
+            .map(tag => tag.textContent?.trim() || '')
+            .filter(Boolean),
+          steamUrl: imageElement?.closest('a')?.getAttribute('href') || ''
+        };
+      }).filter(screenshot => screenshot.url);
+    } catch (error: any) {
+      console.error('SteamService Error:', error);
+      if (error.name === 'AbortError') throw error;
+      throw new Error(`Failed to load screenshots: ${error.message}`);
     }
   }
 
   setAppId(appId: string) {
     this.config.appId = appId;
-    Object.keys(cache).forEach(key => delete cache[key]); // Clear cache when changing game
+    Object.keys(cache).forEach(key => delete cache[key]);
   }
 }
 
-// Créer une instance par défaut avec l'ID de Space Engineers
 export const steamService = new SteamService({
-  appId: '1133870', // ID de Space Engineers
-}); 
+  appId: '1133870',
+});
