@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BiX, BiUser, BiHeart, BiComment, BiExpand, BiCollapse, BiDownload, BiShare, BiZoomIn, BiZoomOut } from 'react-icons/bi';
 import { SteamScreenshot } from '../services/steamService';
 import '../styles/components/ImageModal.css';
@@ -13,12 +13,20 @@ export const ImageModal: React.FC<ImageModalProps> = ({ screenshot, onClose, for
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
-  // Générer un titre par défaut si aucun n'est fourni
   const displayTitle = screenshot.title || `Création de ${screenshot.author.name}`;
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     setCanShare('share' in navigator && typeof navigator.share === 'function');
@@ -34,10 +42,20 @@ export const ImageModal: React.FC<ImageModalProps> = ({ screenshot, onClose, for
     }
   }, []);
 
-  const toggleZoom = useCallback(() => {
-    setIsZoomed(prev => !prev);
-    setShowControls(!isZoomed);
-  }, [isZoomed]);
+  const toggleZoom = useCallback((clientX?: number, clientY?: number) => {
+    setIsZoomed(prev => {
+      if (!prev && imageRef.current && clientX && clientY) {
+        const rect = imageRef.current.getBoundingClientRect();
+        const zoomFactor = 2;
+        imageRef.current.style.transformOrigin = `${((clientX - rect.left) / rect.width) * 100}% ${((clientY - rect.top) / rect.height) * 100}%`;
+        imageRef.current.style.transform = `scale(${zoomFactor})`;
+      } else {
+        imageRef.current?.style.removeProperty('transform');
+      }
+      return !prev;
+    });
+    setShowControls(prev => !prev);
+  }, []);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     switch (e.key) {
@@ -52,38 +70,47 @@ export const ImageModal: React.FC<ImageModalProps> = ({ screenshot, onClose, for
           onClose();
         }
         break;
-      case 'f':
-        toggleFullscreen();
-        break;
-      case 'z':
-        toggleZoom();
-        break;
-      case 'h':
-        setShowControls(prev => !prev);
-        break;
-      case '?':
-        setShowShortcuts(prev => !prev);
-        break;
+      case 'f': toggleFullscreen(); break;
+      case 'z': toggleZoom(); break;
+      case 'h': setShowControls(prev => !prev); break;
+      case '?': setShowShortcuts(prev => !prev); break;
     }
   }, [onClose, toggleFullscreen, toggleZoom, isZoomed]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientY);
+    if (e.touches.length === 1) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now()
+      };
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart) return;
+    if (!touchStartRef.current || e.touches.length > 1) return;
     
-    const currentTouch = e.touches[0].clientY;
-    const diff = touchStart - currentTouch;
-
-    if (diff > 100) {
+    const deltaY = touchStartRef.current.y - e.touches[0].clientY;
+    if (Math.abs(deltaY) > 100) {
       onClose();
     }
   };
 
-  const handleTouchEnd = () => {
-    setTouchStart(null);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const { clientX, clientY } = e.changedTouches[0];
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    const movedDistance = Math.hypot(
+      clientX - touchStartRef.current.x,
+      clientY - touchStartRef.current.y
+    );
+
+    if (deltaTime < 300 && movedDistance < 10) {
+      toggleZoom(clientX, clientY);
+    }
+    
+    touchStartRef.current = null;
   };
 
   const handleShare = async () => {
@@ -128,66 +155,86 @@ export const ImageModal: React.FC<ImageModalProps> = ({ screenshot, onClose, for
       onTouchEnd={handleTouchEnd}
     >
       <div className={`modal-controls ${showControls ? '' : 'hidden'}`}>
-        <button className="close-button" onClick={onClose} title="Fermer (Esc)">
-          <BiX size={36} />
-          <span className="tooltip">Fermer</span>
+        <button className="close-button" onClick={onClose} aria-label="Fermer">
+          <BiX size={isMobile ? 28 : 36} />
+          <span className="tooltip">Fermer (Esc)</span>
         </button>
         <div className="modal-actions">
-          <button onClick={toggleFullscreen} title="Plein écran (F)">
-            {isFullscreen ? <BiCollapse size={32} /> : <BiExpand size={32} />}
-            <span className="tooltip">{isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}</span>
+          <button onClick={toggleFullscreen} aria-label="Plein écran">
+            {isFullscreen ? <BiCollapse size={isMobile ? 24 : 32} /> : <BiExpand size={isMobile ? 24 : 32} />}
+            <span className="tooltip">{isFullscreen ? 'Quitter plein écran' : 'Plein écran (F)'}</span>
           </button>
-          <button onClick={toggleZoom} title="Zoomer (Z)">
-            {isZoomed ? <BiZoomOut size={32} /> : <BiZoomIn size={32} />}
-            <span className="tooltip">{isZoomed ? 'Dé-zoomer' : 'Zoomer'}</span>
+          <button onClick={() => toggleZoom()} aria-label="Zoom">
+            {isZoomed ? <BiZoomOut size={isMobile ? 24 : 32} /> : <BiZoomIn size={isMobile ? 24 : 32} />}
+            <span className="tooltip">{isZoomed ? 'Dé-zoomer (Z)' : 'Zoomer (Z)'}</span>
           </button>
-          <button onClick={handleDownload} title="Télécharger l'image">
-            <BiDownload size={32} />
+          <button onClick={handleDownload} aria-label="Télécharger">
+            <BiDownload size={isMobile ? 24 : 32} />
             <span className="tooltip">Télécharger</span>
           </button>
           {canShare && (
-            <button onClick={handleShare} title="Partager l'image">
-              <BiShare size={32} />
+            <button onClick={handleShare} aria-label="Partager">
+              <BiShare size={isMobile ? 24 : 32} />
               <span className="tooltip">Partager</span>
             </button>
           )}
         </div>
       </div>
 
-      <div 
-        className="modal-content" 
-        onClick={toggleZoom}
-      >
+      <div className="modal-content">
         <img 
+          ref={imageRef}
           src={screenshot.url} 
           alt={displayTitle}
           className={isZoomed ? 'zoomed' : ''}
+          loading="lazy"
         />
       </div>
 
       <div className={`modal-info ${showControls ? '' : 'hidden'}`}>
-        <h2>{displayTitle}</h2>
-        {screenshot.description && <p className="modal-description">{screenshot.description}</p>}
-        <div className="modal-author">
-          <div className="author-avatar">
-            <BiUser size={24} />
+        <div className="info-content">
+          <h2>{displayTitle}</h2>
+          {screenshot.description && <p className="modal-description">{screenshot.description}</p>}
+          <div className="metadata-container">
+            <div className="modal-author">
+              <div className="author-avatar">
+                {screenshot.author.avatarUrl ? (
+                  <img 
+                    src={screenshot.author.avatarUrl} 
+                    alt={`Avatar de ${screenshot.author.name}`}
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      img.parentElement?.querySelector('svg')?.classList.remove('hidden');
+                    }}
+                  />
+                ) : (
+                  <BiUser size={20} />
+                )}
+                <BiUser className="hidden" size={20} />
+              </div>
+              <div className="author-info">
+                {screenshot.author.profileUrl !== '#' ? (
+                  <a 
+                    href={screenshot.author.profileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="author-link"
+                  >
+                    {screenshot.author.name}
+                  </a>
+                ) : (
+                  <span className="author-link">
+                    {screenshot.author.name}
+                  </span>
+                )}
+                <div className="modal-stats">
+                  <span><BiHeart /> {formatNumber(screenshot.stats.likes)}</span>
+                  <span><BiComment /> {formatNumber(screenshot.stats.comments)}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <a 
-            href={screenshot.author.profileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-          >
-            {screenshot.author.name}
-          </a>
-        </div>
-        <div className="modal-stats">
-          <span title="J'aime">
-            <BiHeart /> {formatNumber(screenshot.stats.likes)}
-          </span>
-          <span title="Commentaires">
-            <BiComment /> {formatNumber(screenshot.stats.comments)}
-          </span>
         </div>
       </div>
 
@@ -200,11 +247,10 @@ export const ImageModal: React.FC<ImageModalProps> = ({ screenshot, onClose, for
               <li><kbd>F</kbd> Plein écran</li>
               <li><kbd>Z</kbd> Zoomer</li>
               <li><kbd>H</kbd> Afficher/Masquer les contrôles</li>
-              <li><kbd>?</kbd> Afficher les raccourcis</li>
             </ul>
           </div>
         </div>
       )}
     </div>
   );
-}; 
+};

@@ -173,16 +173,6 @@ class SteamService {
           avatarUrl: authorAvatarUrl || ''
         };
 
-        // Log pour debug
-        console.log('Author data:', {
-          name: authorName,
-          avatarUrl: authorAvatarUrl,
-          link: authorLink,
-          rawAuthorBlock: authorBlock?.outerHTML,
-          rawNameElement: authorNameElement?.outerHTML,
-          rawAvatarElement: authorAvatarElement?.outerHTML
-        });
-
         // Extraction du reste des données
         const title = getText('.apphub_CardContentTitle') || 'Sans titre';
         const description = getText('.apphub_CardTextContent') || '';
@@ -217,7 +207,6 @@ class SteamService {
         };
       }).filter(screenshot => screenshot.url);
     } catch (error: any) {
-      console.error('SteamService Error:', error);
       if (error.name === 'AbortError') throw error;
       throw new Error(`Failed to load screenshots: ${error.message}`);
     }
