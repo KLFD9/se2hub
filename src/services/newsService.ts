@@ -1,7 +1,7 @@
 import { FeaturedPost } from '../types/news'
 
 const STEAM_APP_ID = '1133870' // Space Engineers 2
-const STEAM_NEWS_URL = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${STEAM_APP_ID}&count=10&maxlength=1000&format=json`
+const STEAM_NEWS_URL = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${STEAM_APP_ID}&count=10&maxlength=0&format=json`
 const CORS_PROXY = 'https://corsproxy.io/?'
 
 interface SteamNewsResponse {
@@ -45,6 +45,9 @@ type PendingRequest = Promise<ProxyResponse>
 type PendingImageRequest = Promise<string>
 const pendingRequests: { [key: string]: PendingRequest | PendingImageRequest } = {}
 
+// Cache pour les articles individuels
+const articleCache: { [key: string]: { data: FeaturedPost, timestamp: number } } = {}
+
 // Fonction optimisée pour les requêtes avec cache et déduplication
 const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
   const now = Date.now()
@@ -67,7 +70,7 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
       try {
         const response = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`, {
           headers: { 
-            'Accept': 'application/json',
+            'Accept': url === STEAM_NEWS_URL ? 'application/json' : 'text/html',
             'Origin': window.location.origin
           },
           signal: controller.signal
@@ -79,9 +82,9 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        const data = await response.json()
-        
+        // Pour l'API Steam News, on attend du JSON
         if (url === STEAM_NEWS_URL) {
+          const data = await response.json()
           if (!data.appnews?.newsitems) {
             throw new Error('Structure de réponse Steam invalide')
           }
@@ -100,13 +103,15 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
           return processedData
         }
 
-        if (!data.contents) {
-          throw new Error('Réponse invalide: pas de contenu')
-        }
-
+        // Pour les autres URLs, on attend du HTML
+        const text = await response.text()
         const processedData: ProxyResponse = {
-          contents: data.contents,
-          status: data.status
+          contents: text,
+          status: {
+            url: url,
+            content_type: 'text/html',
+            http_code: 200
+          }
         }
 
         cache[cacheKey] = {
@@ -274,6 +279,190 @@ export const fetchNews = async (): Promise<FeaturedPost[]> => {
     return posts
   } catch (error) {
     console.error('❌ Erreur:', error instanceof Error ? error.message : 'Erreur inconnue')
+    throw error
+  }
+}
+
+export const fetchArticleById = async (id: string | number): Promise<FeaturedPost> => {
+  const cacheKey = `article_${id}`
+  const now = Date.now()
+
+  if (articleCache[cacheKey] && (now - articleCache[cacheKey].timestamp) < CACHE_DURATION) {
+    return articleCache[cacheKey].data
+  }
+
+  try {
+    console.group(`📑 Analyse de l'article ${id}`)
+    
+    const newsData = await fetchWithCache(STEAM_NEWS_URL)
+    if (!newsData.contents) {
+      throw new Error('Pas de contenu dans la réponse')
+    }
+
+    const steamNews: SteamNewsResponse = JSON.parse(newsData.contents)
+    const newsItem = steamNews.appnews.newsitems.find(item => item.gid === id.toString())
+
+    if (!newsItem) {
+      throw new Error('Article non trouvé')
+    }
+
+    // Nettoyer le contenu initial des balises BBCode
+    let initialContent = newsItem.contents
+      .replace(/\[img\]/gi, '')
+      .replace(/\[\/img\]/gi, '')
+      .replace(/\[url[^\]]*\]/gi, '')
+      .replace(/\[\/url\]/gi, '')
+      .replace(/\[list\]/gi, '')
+      .replace(/\[\/list\]/gi, '')
+      .replace(/\[\*\]/gi, '• ')
+
+    // Analyser le contenu initial
+    console.group('1. Contenu initial')
+    console.log('Type de contenu:', typeof initialContent)
+    console.log('Longueur:', initialContent.length)
+    console.log('Contient du HTML:', /<[^>]+>/g.test(initialContent))
+    console.log('Contient des images Steam:', initialContent.includes('{STEAM_CLAN_IMAGE}'))
+    console.log('URL de l\'article:', newsItem.url)
+    console.groupEnd()
+
+    // Récupérer le contenu complet
+    let fullContent = initialContent
+    if (newsItem.url) {
+      console.group('2. Récupération du contenu complet')
+      try {
+        // Construire l'URL correcte pour Steam Community
+        const targetUrl = newsItem.url
+          .replace('steamstore-a.akamaihd.net/news/externalpost/', 'steamcommunity.com/games/')
+          .replace(/\/\d+$/, '') // Supprimer l'ID à la fin si présent
+
+        console.log('URL cible:', targetUrl)
+        
+        const articleData = await fetchWithCache(targetUrl)
+        if (articleData.contents) {
+          const parser = new DOMParser()
+          const articleDoc = parser.parseFromString(articleData.contents, 'text/html')
+          
+          // Rechercher le contenu dans l'ordre de priorité
+          const contentSelectors = [
+            '.announcement_body',
+            '.blogSectionContent',
+            '.body_content',
+            '.news_content',
+            '.news_post_content',
+            '.body'
+          ]
+
+          for (const selector of contentSelectors) {
+            const content = articleDoc.querySelector(selector)
+            if (content) {
+              console.log('✅ Contenu trouvé avec:', selector)
+              
+              // Nettoyer le contenu HTML
+              content.querySelectorAll('script, style, iframe').forEach(el => el.remove())
+              
+              // Préserver la structure HTML et les sauts de ligne
+              let cleanContent = content.innerHTML
+                .replace(/\[img\]/gi, '')
+                .replace(/\[\/img\]/gi, '')
+                .replace(/\[url[^\]]*\]/gi, '')
+                .replace(/\[\/url\]/gi, '')
+                .replace(/\[list\]/gi, '')
+                .replace(/\[\/list\]/gi, '')
+                .replace(/\[\*\]/gi, '• ')
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/\n\s*\n/g, '\n\n')
+                .replace(/\s+/g, ' ')
+                .replace(/>\s+</g, '><')
+                .trim()
+
+              // Structurer le contenu en paragraphes
+              if (!cleanContent.includes('<p')) {
+                cleanContent = cleanContent
+                  .split(/\n{2,}/)
+                  .map(p => p.trim())
+                  .filter(p => p)
+                  .map(p => {
+                    if (p.startsWith('•')) {
+                      const items = p.split(/\n\s*•\s*/).filter(Boolean)
+                      return `<ul class="article-list">${items.map(item => 
+                        `<li class="article-list-item">${item.trim()}</li>`
+                      ).join('')}</ul>`
+                    }
+                    return `<p class="article-paragraph">${p}</p>`
+                  })
+                  .join('\n')
+              }
+
+              console.log('Structure HTML:', {
+                childNodes: content.childNodes.length,
+                textLength: content.textContent?.length || 0,
+                images: content.querySelectorAll('img').length,
+                paragraphs: content.querySelectorAll('p').length,
+                lists: content.querySelectorAll('ul, ol').length,
+                lineBreaks: (cleanContent.match(/\n/g) || []).length
+              })
+
+              fullContent = cleanContent
+              break
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur récupération contenu complet:', error)
+      }
+      console.groupEnd()
+    }
+
+    // Analyser le contenu final
+    console.group('3. Analyse du contenu final')
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = fullContent
+
+    const contentStats = {
+      longueurTotale: fullContent.length,
+      paragraphes: tempDiv.querySelectorAll('p').length,
+      images: tempDiv.querySelectorAll('img').length,
+      liens: tempDiv.querySelectorAll('a').length,
+      listes: tempDiv.querySelectorAll('ul, ol').length,
+      balises: Array.from(fullContent.matchAll(/<(\w+)[^>]*>/g))
+        .map(m => m[1])
+        .reduce((acc: Record<string, number>, tag) => {
+          acc[tag] = (acc[tag] || 0) + 1
+          return acc
+        }, {})
+    }
+    
+    console.log('Structure du contenu:', contentStats)
+    console.groupEnd()
+
+    const imageUrl = await extractFeaturedImage(fullContent, newsItem.url)
+    const image = imageUrl.startsWith('https://clan.cloudflare.steamstatic.com') 
+      ? imageUrl 
+      : `https://cdn.akamai.steamstatic.com/steam/apps/${STEAM_APP_ID}/header.jpg`
+
+    const textContent = tempDiv.textContent || tempDiv.innerText || ''
+
+    const article: FeaturedPost = {
+      id: parseInt(newsItem.gid),
+      title: newsItem.title,
+      category: newsItem.feedlabel || 'News',
+      date: formatDate(newsItem.date),
+      readTime: `${Math.max(3, Math.ceil(textContent.length / 1000))} min`,
+      excerpt: textContent.length > 150 ? textContent.slice(0, 147) + '...' : textContent,
+      content: fullContent,
+      image,
+      tags: ['Space Engineers 2', newsItem.feedname]
+    }
+
+    articleCache[cacheKey] = {
+      data: article,
+      timestamp: now
+    }
+
+    console.groupEnd()
+    return article
+  } catch (error) {
+    console.error('❌ Erreur récupération article:', error)
     throw error
   }
 }

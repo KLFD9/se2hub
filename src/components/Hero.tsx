@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { BiTime, BiShare } from 'react-icons/bi'
 import { FiTrendingUp } from 'react-icons/fi'
 import { fetchNews } from '../services/newsService'
@@ -123,8 +124,9 @@ export const Hero = () => {
           ) : (
             <>
               {displayedPosts.map(post => (
-                <article 
-                  key={post.id} 
+                <Link 
+                  to={`/article/${post.id}`}
+                  key={post.id}
                   className={`featured-card ${post.trending ? 'trending' : ''} ${readPosts.has(post.id) ? 'read' : 'unread'}`}
                   onClick={() => markAsRead(post.id)}
                 >
@@ -153,6 +155,7 @@ export const Hero = () => {
                       <button 
                         className="share-btn"
                         onClick={(e) => {
+                          e.preventDefault()
                           e.stopPropagation()
                           handleShare(post)
                         }}
@@ -161,7 +164,7 @@ export const Hero = () => {
                       </button>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
               {isLoadingMore && (
                 [...Array(3)].map((_, i) => (

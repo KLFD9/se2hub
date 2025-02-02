@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { FeaturesGrid } from './components/FeaturesGrid';
 import { CommunityGallery } from './components/CommunityGallery';
+import { ArticlePage } from './components/ArticlePage';
 import { Footer } from './components/Footer'
 import './styles/App.css'
 import React from 'react';
@@ -24,6 +25,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gallery" element={<CommunityGallery />} />
+          <Route path="/article/:id" element={<ArticlePage />} />
         </Routes>
         <Footer />
       </div>
