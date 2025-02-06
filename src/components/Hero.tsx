@@ -6,7 +6,6 @@ import { fetchNews } from '../services/newsService'
 import { FeaturedPost } from '../types/news'
 import '../styles/components/Hero.css'
 
-
 const SkeletonCard = ({ isMain = false }: { isMain?: boolean }) => (
   <article className={`featured-card skeleton-card ${isMain ? 'skeleton-main' : 'skeleton-secondary'}`}>
     {isMain ? (
@@ -39,8 +38,17 @@ const SkeletonCard = ({ isMain = false }: { isMain?: boolean }) => (
   </article>
 )
 
+// Fonction utilitaire pour nettoyer les URLs d'images
+const cleanImageUrl = (url: string): string => {
+  return url.replace(/\[\/img\]/g, '').replace(/\[img\]/g, '')
+}
+
 export const Hero = () => {
-  const [readPosts, setReadPosts] = useState<Set<number>>(new Set())
+  const [readPosts, setReadPosts] = useState<Set<number>>(() => {
+    // Récupérer les articles lus depuis le localStorage
+    const saved = localStorage.getItem('readPosts')
+    return saved ? new Set(JSON.parse(saved)) : new Set()
+  })
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -69,6 +77,11 @@ export const Hero = () => {
     }
     loadInitialPosts()
   }, [])
+
+  // Sauvegarder les articles lus dans le localStorage
+  useEffect(() => {
+    localStorage.setItem('readPosts', JSON.stringify(Array.from(readPosts)))
+  }, [readPosts])
 
   const handleShare = (post: FeaturedPost) => {
     if (navigator.share) {
@@ -127,11 +140,12 @@ export const Hero = () => {
                 <Link 
                   to={`/article/${post.id}`}
                   key={post.id}
-                  className={`featured-card ${post.trending ? 'trending' : ''} ${readPosts.has(post.id) ? 'read' : 'unread'}`}
+                  className={`featured-card ${post.trending ? 'trending' : ''} ${readPosts.has(post.id) ? 'read' : ''}`}
                   onClick={() => markAsRead(post.id)}
+                  data-excerpt={post.excerpt}
                 >
                   <div className="featured-image">
-                    <img src={post.image} alt={post.title} />
+                    <img src={cleanImageUrl(post.image)} alt={post.title} />
                   </div>
                   <div className="featured-content">
                     <div className="category-wrapper">

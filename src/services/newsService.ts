@@ -222,10 +222,6 @@ const formatDate = (timestamp: number): string => {
 
 export const fetchNews = async (): Promise<FeaturedPost[]> => {
   try {
-    console.log('🚀 Récupération des actualités Steam...')
-    
-    const fetchStartTime = performance.now()
-    
     let newsData: ProxyResponse
     try {
       newsData = await fetchWithCache(STEAM_NEWS_URL)
@@ -272,10 +268,7 @@ export const fetchNews = async (): Promise<FeaturedPost[]> => {
         }
       })
     )
-    
-    const totalTime = performance.now() - fetchStartTime
-    console.log(`✅ ${posts.length} articles récupérés en ${totalTime.toFixed(0)}ms`)
-    
+        
     return posts
   } catch (error) {
     console.error('❌ Erreur:', error instanceof Error ? error.message : 'Erreur inconnue')
@@ -292,7 +285,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
   }
 
   try {
-    console.group(`📑 Analyse de l'article ${id}`)
     
     const newsData = await fetchWithCache(STEAM_NEWS_URL)
     if (!newsData.contents) {
@@ -316,26 +308,14 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       .replace(/\[\/list\]/gi, '')
       .replace(/\[\*\]/gi, '• ')
 
-    // Analyser le contenu initial
-    console.group('1. Contenu initial')
-    console.log('Type de contenu:', typeof initialContent)
-    console.log('Longueur:', initialContent.length)
-    console.log('Contient du HTML:', /<[^>]+>/g.test(initialContent))
-    console.log('Contient des images Steam:', initialContent.includes('{STEAM_CLAN_IMAGE}'))
-    console.log('URL de l\'article:', newsItem.url)
-    console.groupEnd()
-
     // Récupérer le contenu complet
     let fullContent = initialContent
     if (newsItem.url) {
-      console.group('2. Récupération du contenu complet')
       try {
         // Construire l'URL correcte pour Steam Community
         const targetUrl = newsItem.url
           .replace('steamstore-a.akamaihd.net/news/externalpost/', 'steamcommunity.com/games/')
           .replace(/\/\d+$/, '') // Supprimer l'ID à la fin si présent
-
-        console.log('URL cible:', targetUrl)
         
         const articleData = await fetchWithCache(targetUrl)
         if (articleData.contents) {
@@ -355,7 +335,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
           for (const selector of contentSelectors) {
             const content = articleDoc.querySelector(selector)
             if (content) {
-              console.log('✅ Contenu trouvé avec:', selector)
               
               // Nettoyer le contenu HTML
               content.querySelectorAll('script, style, iframe').forEach(el => el.remove())
@@ -393,15 +372,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
                   .join('\n')
               }
 
-              console.log('Structure HTML:', {
-                childNodes: content.childNodes.length,
-                textLength: content.textContent?.length || 0,
-                images: content.querySelectorAll('img').length,
-                paragraphs: content.querySelectorAll('p').length,
-                lists: content.querySelectorAll('ul, ol').length,
-                lineBreaks: (cleanContent.match(/\n/g) || []).length
-              })
-
               fullContent = cleanContent
               break
             }
@@ -410,30 +380,12 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       } catch (error) {
         console.warn('⚠️ Erreur récupération contenu complet:', error)
       }
-      console.groupEnd()
     }
 
     // Analyser le contenu final
-    console.group('3. Analyse du contenu final')
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = fullContent
 
-    const contentStats = {
-      longueurTotale: fullContent.length,
-      paragraphes: tempDiv.querySelectorAll('p').length,
-      images: tempDiv.querySelectorAll('img').length,
-      liens: tempDiv.querySelectorAll('a').length,
-      listes: tempDiv.querySelectorAll('ul, ol').length,
-      balises: Array.from(fullContent.matchAll(/<(\w+)[^>]*>/g))
-        .map(m => m[1])
-        .reduce((acc: Record<string, number>, tag) => {
-          acc[tag] = (acc[tag] || 0) + 1
-          return acc
-        }, {})
-    }
-    
-    console.log('Structure du contenu:', contentStats)
-    console.groupEnd()
 
     const imageUrl = await extractFeaturedImage(fullContent, newsItem.url)
     const image = imageUrl.startsWith('https://clan.cloudflare.steamstatic.com') 
@@ -459,7 +411,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       timestamp: now
     }
 
-    console.groupEnd()
     return article
   } catch (error) {
     console.error('❌ Erreur récupération article:', error)

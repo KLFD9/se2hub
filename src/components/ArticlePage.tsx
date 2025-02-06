@@ -10,96 +10,15 @@ import { FeaturedPost } from '../types/news'
 import { fetchArticleById } from '../services/newsService'
 import '../styles/components/ArticlePage.css'
 
-const YouTubeEmbed = ({ videoId }: { videoId: string }) => (
-  <div className="video-container youtube">
-    <iframe
-      src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`}
-      title="YouTube video player"
-      frameBorder="0"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowFullScreen
-    />
-  </div>
-)
-
-const TwitchEmbed = ({ channel }: { channel: string }) => (
-  <div className="video-container twitch">
-    <iframe
-      src={`https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}&autoplay=false`}
-      title="Twitch stream player"
-      frameBorder="0"
-      allowFullScreen
-    />
-  </div>
-)
-
-// Types pour le BBCode
-interface BBCodeMatch {
-  tag: string;
-  attributes?: Record<string, string>;
-  content: string;
-}
-
-// Types pour le parsing
-interface ParsedStats {
-  paragraphs: number;
-  images: number;
-  links: number;
-  lists: number;
-  headings: {
-    h1: number;
-    h2: number;
-    h3: number;
-    h4: number;
-  };
-  embeds: {
-    youtube: number;
-    twitch: number;
-  };
-}
-
-const parseBBCode = (content: string): BBCodeMatch[] => {
-  const matches: BBCodeMatch[] = []
-  // Regex améliorée pour capturer les attributs BBCode et le contenu avec des sauts de ligne
-  const regex = /\[(\w+)(?:=([^\]]+))?\]([\s\S]*?)\[\/\1\]/g
-  let match
-  while ((match = regex.exec(content)) !== null) {
-    matches.push({
-      tag: match[1],
-      attributes: match[2] ? match[2].split(' ').reduce((acc: Record<string, string>, attr) => {
-        const [key, value] = attr.split('=')
-        if (key && value) acc[key] = value.replace(/["']/g, '')
-        return acc
-      }, {}) : {},
-      content: match[3]
-    })
-  }
-  return matches
-}
 
 const MarkdownParser = (content: string): string => {
   if (!content) return ''
-  
-  console.group('🔄 Analyse du formatage')
-  
-  // Analyse initiale du contenu
-  const bbCodeMatches = parseBBCode(content)
-  const initialAnalysis = {
-    length: content.length,
-    hasHtml: /<[^>]+>/g.test(content),
-    lineBreaks: (content.match(/\n/g) || []).length,
-    steamImages: (content.match(/{STEAM_CLAN_IMAGE}\/[^}\s]+/g) || []).length,
-    urls: (content.match(/https?:\/\/[^\s<>"]+/g) || []).length,
-    bbCode: bbCodeMatches.length,
-    bbTags: bbCodeMatches.map(m => m.tag),
-    existingTags: Array.from(content.matchAll(/<(\w+)[^>]*>/g)).map(m => m[1])
-  }
-  console.log('📊 Analyse initiale:', initialAnalysis)
-
-  // Nettoyage initial du contenu
   let parsed = content
     .replace(/" class="article-image"[^>]*>/g, '')
+    .replace(/{STEAM_CLAN_IMAGE}\/[^}\s]+/g, '')
     .trim()
+
+ 
 
   // Traitement des balises BBCode complexes
   const bbCodeReplacements = [
@@ -107,7 +26,7 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /\[table(?:=([^\]]+))?\]([\s\S]*?)\[\/table\]/g,
       replacement: (_: string, attrs: string, content: string) => {
-        console.log('📊 Traitement table avec attributs:', attrs)
+        
         const tableAttrs = attrs ? attrs.split(' ').reduce((acc: Record<string, string>, attr) => {
           const [key, value] = attr.split('=')
           if (key && value) acc[key] = value.replace(/["']/g, '')
@@ -125,7 +44,7 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /\[h([1-6])\]([\s\S]*?)\[\/h\1\]/g,
       replacement: (_: string, level: string, content: string) => {
-        console.log(`🔤 Traitement titre h${level}:`, content.trim())
+        
         // Préserver les émojis dans le contenu
         const processedContent = content.trim()
         return `<h${level} class="article-heading article-h${level}">${processedContent}</h${level}>`
@@ -135,7 +54,7 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /\[previewyoutube=([a-zA-Z0-9_-]+)(?:;.*?)?\]\[\/previewyoutube\]/g,
       replacement: (_: string, videoId: string) => {
-        console.log('🎥 Traitement vidéo YouTube:', videoId)
+        
         return `<div class="video-container youtube">
           <iframe
             src="https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0"
@@ -151,7 +70,7 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /\[tr\]([\s\S]*?)\[\/tr\]/g,
       replacement: (_: string, content: string) => {
-        console.log('📑 Traitement ligne de table')
+        
         return `<div class="article-table-row">${content}</div>`
       }
     },
@@ -159,7 +78,7 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /\[td\]([\s\S]*?)\[\/td\]/g,
       replacement: (_: string, content: string) => {
-        console.log('📍 Traitement cellule de table')
+        
         return `<div class="article-table-cell">${content}</div>`
       }
     },
@@ -189,10 +108,13 @@ const MarkdownParser = (content: string): string => {
         return `<a href="${url}" class="article-link" target="_blank" rel="noopener noreferrer">${text}</a>`
       }
     },
-    // Images
+    // Images (seulement pour les images non-Steam)
     {
       pattern: /\[img\](.*?)\[\/img\]/g,
-      replacement: (_: string, url: string) => {
+      replacement: (_: string, url: string) => {        
+        if (url.includes('steamstatic') || url.includes('clan.cloudflare.steamstatic')) {
+          return ''
+        }
         return `<img src="${url}" class="article-image" alt="Article image" loading="lazy" />`
       }
     },
@@ -217,36 +139,16 @@ const MarkdownParser = (content: string): string => {
     parsed = parsed.replace(pattern, replacement)
   })
 
-  // Stockage des images déjà traitées pour éviter les doublons
-  const processedImages = new Set<string>()
-
-  // Traitement des images Steam avec détection des doublons
-  parsed = parsed.replace(/{STEAM_CLAN_IMAGE}\/([^}\s]+)/g, (_: string, path: string) => {
-    console.log('🖼️ Traitement image Steam:', path)
-    if (processedImages.has(path)) {
-      console.log('⚠️ Image dupliquée détectée:', path)
-      return '' // Ne pas afficher l'image dupliquée
-    }
-    processedImages.add(path)
-    const imageUrl = `https://clan.cloudflare.steamstatic.com/images/${path}`
-    return `<img src="${imageUrl}" class="article-image" alt="Steam Community Image" loading="lazy" />`
-  })
-
-  // Traitement des listes avec puces
-  console.log('🔍 Recherche des listes avec puces...')
-  const bulletPoints = parsed.match(/(?:^|\n|\s)•\s*([^\n]+)/g) || []
-  console.log(`📝 Nombre d'éléments de liste trouvés: ${bulletPoints.length}`)
-
   // Conversion des puces en éléments de liste
   parsed = parsed.replace(/(?:^|\n|\s)•\s*([^\n]+)/g, (_: string, item: string) => {
-    console.log('➡️ Traitement élément de liste:', item.trim())
+    
     return `\n<li class="article-list-item">${item.trim()}</li>\n`
   })
 
   // Regrouper les éléments de liste consécutifs
   parsed = parsed.replace(/(<li class="article-list-item">.*?<\/li>\n?)+/gs, 
     (match: string) => {
-      console.log('📑 Regroupement d\'éléments de liste')
+     
       return `<ul class="article-list">\n${match}</ul>\n\n`
     }
   )
@@ -256,14 +158,14 @@ const MarkdownParser = (content: string): string => {
     {
       pattern: /https:\/\/(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g,
       handler: (videoId: string) => {
-        console.log('🎥 Intégration YouTube:', videoId)
+        
         return `<div class="video-container youtube" data-video-id="${videoId}"></div>`
       }
     },
     {
       pattern: /https:\/\/(?:www\.)?twitch\.tv\/([a-zA-Z0-9_]+)/g,
       handler: (channel: string) => {
-        console.log('📺 Intégration Twitch:', channel)
+        
         return `<div class="video-container twitch" data-channel="${channel}"></div>`
       }
     }
@@ -288,24 +190,7 @@ const MarkdownParser = (content: string): string => {
       .join('\n\n')
   }
 
-  // Analyse finale
-  const stats: ParsedStats = {
-    paragraphs: (parsed.match(/<p[^>]*>/g) || []).length,
-    headings: {
-      h1: (parsed.match(/<h1/g) || []).length,
-      h2: (parsed.match(/<h2/g) || []).length,
-      h3: (parsed.match(/<h3/g) || []).length,
-      h4: (parsed.match(/<h4/g) || []).length
-    },
-    images: (parsed.match(/<img[^>]*>/g) || []).length,
-    links: (parsed.match(/<a[^>]*>/g) || []).length,
-    lists: (parsed.match(/<ul[^>]*>/g) || []).length,
-    embeds: {
-      youtube: (parsed.match(/youtube" data-video-id/g) || []).length,
-      twitch: (parsed.match(/twitch" data-channel/g) || []).length
-    }
-  }
-  console.log('📊 Analyse finale:', stats)
+
 
   // Envelopper dans le conteneur principal
   const finalHtml = `<div class="article-content-inner">\n${parsed}\n</div>`
@@ -327,9 +212,7 @@ const MarkdownParser = (content: string): string => {
     ADD_ATTR: ['style']
   })
 
-  console.log('✨ Taille finale après sanitization:', sanitized.length)
-  console.groupEnd()
-
+  
   return sanitized
 }
 
@@ -339,7 +222,6 @@ export const ArticlePage = () => {
   const [article, setArticle] = useState<FeaturedPost | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showCopied, setShowCopied] = useState(false)
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -402,45 +284,6 @@ export const ArticlePage = () => {
       handleEmbeds()
     }
   }, [isLoading, article])
-
-  const handleShare = async (platform?: string) => {
-    if (!article) return
-
-    const shareUrl = window.location.href
-    const shareText = `${article.title} - Space Engineers 2`
-
-    try {
-      switch (platform) {
-        case 'twitter':
-          window.open(
-            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
-            '_blank'
-          )
-          break
-        case 'discord':
-          window.open(
-            `https://discord.com/channels/@me?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
-            '_blank'
-          )
-          break
-        case 'copy':
-          await navigator.clipboard.writeText(shareUrl)
-          setShowCopied(true)
-          setTimeout(() => setShowCopied(false), 2000)
-          break
-        default:
-          if (navigator.share) {
-            await navigator.share({
-              title: article.title,
-              text: article.excerpt,
-              url: shareUrl,
-            })
-          }
-      }
-    } catch (error) {
-      console.error('Erreur lors du partage:', error)
-    }
-  }
 
   if (isLoading) {
     return (
