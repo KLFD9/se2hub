@@ -1,54 +1,62 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BiHeart, BiComment,BiUser, BiSearch, BiX, BiReset } from 'react-icons/bi';
+import { BiHeart, BiComment, BiUser, BiSearch } from 'react-icons/bi';
 import { steamService, SteamScreenshot } from '../services/steamService';
 import { ImageModal } from './ImageModal';
 import '../styles/components/CommunityGallery.css';
 
-interface FilterState {
-  search: string;
-  sort: 'trending' | 'popular' | 'newest';
-  period: 'day' | 'month' | 'week' | 'all';
-  tags: string[];
-}
+const SkeletonLoader = () => {
+  return (
+    <div className="skeleton-item">
+      <div className="skeleton-image" />
+      <div className="skeleton-overlay">
+        <div className="skeleton-tags">
+          <div className="skeleton-tag" />
+          <div className="skeleton-tag" />
+          <div className="skeleton-tag" />
+        </div>
+        <div className="skeleton-title" />
+        <div className="skeleton-description" />
+        <div className="skeleton-author">
+          <div className="skeleton-avatar" />
+          <div className="skeleton-name" />
+        </div>
+        <div className="skeleton-stats">
+          <div className="skeleton-stat" />
+          <div className="skeleton-stat" />
+        </div>
+      </div>
+    </div>
+  );
+};
 
-const SORT_OPTIONS = [
-  { value: 'popular', label: 'Les plus populaires' },
-  { value: 'newest', label: 'Les plus récents' },
-  { value: 'trending', label: 'Tendances' },
-] as const;
-
-const PERIOD_OPTIONS = [
-  { value: 'day', label: 'Aujourd\'hui' },
-  { value: 'week', label: 'Cette semaine' },
-  { value: 'month', label: 'Ce mois' },
-  { value: 'all', label: 'Tout' },
-] as const;
+const SkeletonGrid = () => (
+  <div className="gallery-loading">
+    {[...Array(9)].map((_, index) => (
+      <SkeletonLoader key={index} />
+    ))}
+  </div>
+);
 
 export const CommunityGallery: React.FC = () => {
   const [images, setImages] = useState<SteamScreenshot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedImage, setSelectedImage] = useState<SteamScreenshot | null>(null);
-  const [activeFilters, setActiveFilters] = useState<FilterState>({
-    search: '',
-    sort: 'popular',
-    period: 'all',
-    tags: []
-  });
-  const [isFilterOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchImages = useCallback(async (pageNum: number, isNewFilter = false) => {
+  const fetchImages = useCallback(async (pageNum: number) => {
     try {
-      setLoading(true);
+      if (pageNum === 1) {
+        setLoading(true);
+      }
       const newImages = await steamService.getScreenshots({
         page: pageNum,
-        sort: activeFilters.sort,
-        period: activeFilters.period,
       });
 
-      setImages(prev => isNewFilter ? newImages : [...prev, ...newImages]);
+      setImages(prev => pageNum === 1 ? newImages : [...prev, ...newImages]);
       setHasMore(newImages.length > 0);
       setError(null);
     } catch (error) {
@@ -56,8 +64,9 @@ export const CommunityGallery: React.FC = () => {
       setError('Impossible de charger les images. Veuillez réessayer plus tard.');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  }, [activeFilters.sort, activeFilters.period]);
+  }, []);
 
   const observer = useRef<IntersectionObserver>();
   const lastImageRef = useCallback((node: HTMLDivElement) => {
@@ -75,37 +84,14 @@ export const CommunityGallery: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-    setImages([]);
-    fetchImages(1, true);
-  }, [activeFilters, fetchImages]);
+    fetchImages(1);
+  }, [fetchImages]);
 
   useEffect(() => {
     if (page > 1) {
       fetchImages(page);
     }
   }, [page, fetchImages]);
-
-  const handleFilterChange = (key: keyof FilterState, value: FilterState[keyof FilterState]) => {
-    setActiveFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleTagToggle = (tag: string) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag]
-    }));
-  };
-
-  const resetFilters = () => {
-    setActiveFilters({
-      search: '',
-      sort: 'popular',
-      period: 'all',
-      tags: []
-    });
-  };
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -118,197 +104,116 @@ export const CommunityGallery: React.FC = () => {
   };
 
   const filteredImages = React.useMemo(() => {
-    return images.filter(image => {
-      const matchesSearch = image.title.toLowerCase().includes(activeFilters.search.toLowerCase());
-      const matchesTags = activeFilters.tags.length === 0 || 
-        activeFilters.tags.every(tag => image.tags.includes(tag));
-      return matchesSearch && matchesTags;
-    });
-  }, [images, activeFilters.search, activeFilters.tags]);
+    return images.filter(image => 
+      image.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      image.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      image.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [images, searchQuery]);
 
   return (
     <div className="community-gallery">
-      <aside className={`gallery-filters ${isFilterOpen ? 'open' : ''}`}>
-        <div className="filters-header">
-          <div className="filters-header-top">
-            <h2>Filtres</h2>
-            <button 
-              className="reset-filters"
-              onClick={resetFilters}
-              title="Réinitialiser les filtres"
-            >
-              <BiReset />
-              Réinitialiser
-            </button>
-          </div>
-        </div>
-
-        {activeFilters.tags.length > 0 && (
-          <div className="active-filters">
-            {activeFilters.tags.map(tag => (
-              <span key={tag} className="active-filter">
-                {tag}
-                <button onClick={() => handleTagToggle(tag)}>
-                  <BiX size={16} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="filter-search">
-          <BiSearch />
-          <input
-            type="text"
-            placeholder="Rechercher..."
-            value={activeFilters.search}
-            onChange={e => handleFilterChange('search', e.target.value)}
-          />
-        </div>
-
-        <div className="filter-group">
-          <h3>
-            Trier par
-            <span className="filter-count">1</span>
-          </h3>
-          <select
-            className="filter-select"
-            value={activeFilters.sort}
-            onChange={e => handleFilterChange('sort', e.target.value as FilterState['sort'])}
-          >
-            {SORT_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <h3>
-            Période
-            <span className="filter-count">1</span>
-          </h3>
-          <select
-            className="filter-select"
-            value={activeFilters.period}
-            onChange={e => handleFilterChange('period', e.target.value as FilterState['period'])}
-          >
-            {PERIOD_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <h3>
-            Tags populaires
-            <span className="filter-count">{activeFilters.tags.length}</span>
-          </h3>
-          <div className="filter-tags">
-            {['Combat', 'Exploration', 'Construction', 'Multijoueur', 'Mods'].map(tag => (
-              <button
-                key={tag}
-                className={`filter-tag ${activeFilters.tags.includes(tag) ? 'active' : ''}`}
-                onClick={() => handleTagToggle(tag)}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-      </aside>
-
       <div className="gallery-container">
         <main className="gallery-content">
           <div className="gallery-header">
-            <h1>Galerie Communautaire</h1>
-            <p>Découvrez les créations de la communauté Space Engineers</p>
+            <h1>
+              <span className="gradient-text" data-text="Galerie">Galerie</span>
+              <span className="subtitle">Communautaire</span>
+            </h1>
+            <p>Explorez et partagez vos créations Space Engineers avec la communauté</p>
+            <div className="search-container">
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder="Rechercher des vaisseaux, stations, bases..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <BiSearch className="search-icon" />
+              </div>
+            </div>
           </div>
 
           {error ? (
             <div className="gallery-error">
               <p>{error}</p>
-              <button onClick={() => fetchImages(1, true)}>Réessayer</button>
+              <button onClick={() => fetchImages(1)}>Réessayer</button>
             </div>
+          ) : initialLoading ? (
+            <SkeletonGrid />
           ) : (
-            <div className="gallery-grid">
-              {filteredImages.map((image, index) => (
-                <div
-                  key={image.id}
-                  ref={index === filteredImages.length - 1 ? lastImageRef : undefined}
-                  className="gallery-item"
-                  onClick={() => setSelectedImage(image)}
-                >
-                  <div className="image-container">
-                    <img src={image.url} alt={image.title} loading="lazy" />
-                    <div className="image-overlay">
-                      <div className="image-tags">
-                        {image.tags.map((tag, idx) => (
-                          <span key={idx} className="image-tag">{tag}</span>
-                        ))}
-                      </div>
-                      <h3>{image.title}</h3>
-                      {image.description && (
-                        <p className="image-description">{image.description}</p>
-                      )}
-                      <div className="author">
-                        <div className="author-avatar">
-                          {image.author.avatarUrl ? (
-                            <img 
-                              src={image.author.avatarUrl} 
-                              alt={`Avatar de ${image.author.name}`}
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.style.display = 'none';
-                                const parent = img.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `<BiUser size={16} color="rgba(255, 255, 255, 0.9)" />`;
-                                }
-                              }}
-                            />
+            <>
+              <div className="gallery-grid">
+                {filteredImages.map((image, index) => (
+                  <div
+                    key={image.id}
+                    ref={index === filteredImages.length - 1 ? lastImageRef : undefined}
+                    className="gallery-item"
+                    onClick={() => setSelectedImage(image)}
+                  >
+                    <div className="image-container">
+                      <img src={image.url} alt={image.title} loading="lazy" />
+                      <div className="image-overlay">
+                        <div className="image-tags">
+                          {image.tags.map((tag, idx) => (
+                            <span key={idx} className="image-tag">{tag}</span>
+                          ))}
+                        </div>
+                        <h3>{image.title}</h3>
+                        {image.description && (
+                          <p className="image-description">{image.description}</p>
+                        )}
+                        <div className="author">
+                          <div className="author-avatar">
+                            {image.author.avatarUrl ? (
+                              <img 
+                                src={image.author.avatarUrl} 
+                                alt={`Avatar de ${image.author.name}`}
+                                onError={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  img.style.display = 'none';
+                                  const parent = img.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<BiUser size={16} color="rgba(255, 255, 255, 0.9)" />`;
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <BiUser size={16} color="rgba(255, 255, 255, 0.9)" />
+                            )}
+                          </div>
+                          {image.author.profileUrl !== '#' ? (
+                            <a 
+                              href={image.author.profileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="author-link"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {image.author.name}
+                            </a>
                           ) : (
-                            <BiUser size={16} color="rgba(255, 255, 255, 0.9)" />
+                            <span className="author-link">
+                              {image.author.name}
+                            </span>
                           )}
                         </div>
-                        {image.author.profileUrl !== '#' ? (
-                          <a 
-                            href={image.author.profileUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="author-link"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {image.author.name}
-                          </a>
-                        ) : (
-                          <span className="author-link">
-                            {image.author.name}
+                        <div className="image-stats">
+                          <span title="J'aime">
+                            <BiHeart /> {formatNumber(image.stats.likes)}
                           </span>
-                        )}
-                      </div>
-                      <div className="image-stats">
-                        <span title="J'aime">
-                          <BiHeart /> {formatNumber(image.stats.likes)}
-                        </span>
-                        <span title="Commentaires">
-                          <BiComment /> {formatNumber(image.stats.comments)}
-                        </span>
+                          <span title="Commentaires">
+                            <BiComment /> {formatNumber(image.stats.comments)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
 
-          {loading && (
-            <div className="gallery-loading">
-              <div className="loading-spinner" />
-              <p>Chargement des images...</p>
-            </div>
+              {loading && <SkeletonGrid />}
+            </>
           )}
 
           {selectedImage && (
