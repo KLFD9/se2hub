@@ -1,7 +1,9 @@
+/* Réinitialisation et box-sizing */
 * {
   box-sizing: border-box;
 }
 
+/* Conteneur principal de la galerie */
 .community-gallery {
   display: flex;
   gap: 3rem;
@@ -140,7 +142,7 @@
   background-color: #0D1117;
   color: white;
   border: 1px solid #293649;
-  padding: 1rem
+  padding: 1rem;
 }
 
 /* Tags améliorés */
@@ -266,7 +268,6 @@
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.2s ease;
-
 }
 
 /* Contenu principal */
@@ -278,18 +279,29 @@
 .gallery-header {
   margin-bottom: 4rem;
   margin-top: 2rem;
-  text-align: center;
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-evenly;
-  gap: 1.5rem;
-  position: relative;
-  flex-wrap: nowrap;
-  align-content: center;
+  justify-content: space-between;
+  gap: 2rem;
   width: 100%;
 }
 
+.header-left {
+  flex-shrink: 0;
+}
+
+.header-right {
+  flex-grow: 1;
+  max-width: 800px;
+}
+
+.header-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  width: 100%;
+}
 
 .gallery-header h1 {
   font-size: 3.5rem;
@@ -316,7 +328,7 @@
 }
 
 .gallery-header p {
-  font-size: 0.850rem;
+  font-size: 0.85rem;
   color: var(--text-color-secondary);
   max-width: 250px;
   margin: 0 auto;
@@ -344,6 +356,7 @@
   border-radius: 100px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  border-bottom: 1px solid hsl(330, 100%, 58%);
 }
 
 .search-bar:hover {
@@ -550,7 +563,15 @@
   text-decoration: underline;
 }
 
+/* Conteneur général pour les statistiques et le vote */
 .image-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+}
+
+.analytics-stats {
   display: flex;
   align-items: center;
   gap: 1.25rem;
@@ -558,25 +579,87 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-.image-stats span {
+.analytics-stats span {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  transition: all 0.3s ease;
 }
 
-.image-stats svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0.9;
+.analytics-stats span.liked {
+  color: rgb(255, 41, 148);
 }
 
-.gallery-item:hover .image-overlay {
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.98) 0%,
-    rgba(0, 0, 0, 0.85) 50%,
-    rgba(0, 0, 0, 0.2) 100%
-  );
+.analytics-stats span.liked svg {
+  color: rgb(255, 41, 148);
+  filter: drop-shadow(0 0 3px rgba(255, 41, 148, 0.3));
+}
+
+/* Conteneur du bouton de vote */
+.vote-button-container {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bouton de vote */
+.vote-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: #66E3FF;
+  position: relative;
+}
+
+.vote-button svg {
+  width: 24px;
+  height: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Effet hover sur le bouton non voté */
+.vote-button:not(.voted):hover {
+  background: rgba(255, 41, 148, 0.1);
+  width: 42px;
+  height: 42px;
+}
+
+.vote-button:not(.voted):hover svg {
+  color: rgb(255, 41, 148);
+  transform: scale(1.1);
+}
+
+/* Bouton lorsque l'image est votée ou désactivé */
+.vote-button.voted,
+.vote-button:disabled {
+  opacity: 1;
+}
+
+.vote-button.voted svg,
+.vote-button:disabled svg {
+  color: rgb(255, 41, 148);
+  filter: drop-shadow(0 0 5px rgba(255, 41, 148, 0.212));
+  animation: heartPop 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.vote-button.voted:hover svg {
+  color: #fff;
 }
 
 /* Chargement amélioré */
@@ -704,18 +787,14 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.8;
-  }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
 }
 
 button:hover {
   background: #FF2994;
   transition: all 0.5s ease;
-  color:var(--background-color)
+  color: var(--background-color);
 }
 
 /* Accessibilité */
@@ -726,7 +805,84 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* Version mobile */
+/* Bouton de filtrage des images likées */
+.toggle-liked-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--surface-color);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--primary-color);
+  border-radius: 100px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: fit-content;
+  margin-left: auto;
+  border-bottom:1px solid #66e3ff;
+}
+
+.toggle-liked-button .filter-icon {
+  width: 16px;
+  height: 16px;
+  transition: all 0.3s ease;
+}
+
+.toggle-liked-button:hover {
+  background-color: rgba(255, 41, 148, 0.1);
+  border-color: rgb(255, 41, 148);
+  transform: translateY(-1px);
+}
+
+.toggle-liked-button.active {
+  background-color: rgb(255, 41, 148);
+  border-color: rgb(255, 41, 148);
+  color: white;
+}
+
+.toggle-liked-button.active .filter-icon {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+/* Ajustements responsive */
+@media (max-width: 1024px) {
+  .gallery-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2rem;
+  }
+
+  .header-left {
+    text-align: center;
+  }
+
+  .header-controls {
+    align-items: center;
+  }
+
+  .toggle-liked-button {
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .gallery-header {
+    margin-bottom: 2rem;
+  }
+
+  .header-controls {
+    gap: 1rem;
+  }
+
+  .toggle-liked-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 1400px) {
   .gallery-grid {
     columns: 2 350px;
@@ -736,6 +892,11 @@ select:focus-visible {
 @media (max-width: 768px) {
   .community-gallery {
     padding: 5rem 1rem 2rem;
+  }
+
+  .search-container {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
   }
 
   .gallery-container {
@@ -780,7 +941,7 @@ select:focus-visible {
 
   .gallery-header, .subtitle {
     position: relative;
-    margin:0 auto;
+    margin: 0 auto;
     text-align: center;
     width: 100%;
     bottom: 0;

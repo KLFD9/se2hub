@@ -79,8 +79,8 @@
 }
 
 .modal-button svg {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
 }
 
 .modal-info {
@@ -465,12 +465,12 @@
 }
 
 .modal-controls button svg {
-  width: 32px;
-  height: 32px;
+  width: 25px;
+  height: 25px;
   color: white;
-  stroke-width: 1.75;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
+
 
 .close-button {
   background: var(--error-color) !important;

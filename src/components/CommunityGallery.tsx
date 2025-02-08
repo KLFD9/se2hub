@@ -1,33 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BiHeart, BiComment, BiUser, BiSearch } from 'react-icons/bi';
+import { BiComment, BiUser, BiSearch } from 'react-icons/bi';
+import { BsHeartFill, BsHeart } from 'react-icons/bs';
 import { steamService, SteamScreenshot } from '../services/steamService';
+import { incrementImageLikes } from '../services/socialMedia';
 import { ImageModal } from './ImageModal';
 import '../styles/components/CommunityGallery.css';
 
-const SkeletonLoader = () => {
-  return (
-    <div className="skeleton-item">
-      <div className="skeleton-image" />
-      <div className="skeleton-overlay">
-        <div className="skeleton-tags">
-          <div className="skeleton-tag" />
-          <div className="skeleton-tag" />
-          <div className="skeleton-tag" />
-        </div>
-        <div className="skeleton-title" />
-        <div className="skeleton-description" />
-        <div className="skeleton-author">
-          <div className="skeleton-avatar" />
-          <div className="skeleton-name" />
-        </div>
-        <div className="skeleton-stats">
-          <div className="skeleton-stat" />
-          <div className="skeleton-stat" />
-        </div>
+const SkeletonLoader = () => (
+  <div className="skeleton-item">
+    <div className="skeleton-image" />
+    <div className="skeleton-overlay">
+      <div className="skeleton-tags">
+        <div className="skeleton-tag" />
+        <div className="skeleton-tag" />
+        <div className="skeleton-tag" />
+      </div>
+      <div className="skeleton-title" />
+      <div className="skeleton-description" />
+      <div className="skeleton-author">
+        <div className="skeleton-avatar" />
+        <div className="skeleton-name" />
+      </div>
+      <div className="skeleton-stats">
+        <div className="skeleton-stat" />
+        <div className="skeleton-stat" />
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 const SkeletonGrid = () => (
   <div className="gallery-loading">
@@ -46,22 +46,94 @@ export const CommunityGallery: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedImage, setSelectedImage] = useState<SteamScreenshot | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLikedOnly, setShowLikedOnly] = useState(false);
+
+  // État persistant des images votées
+  const [likedImages, setLikedImages] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('likedImages');
+    return saved ? JSON.parse(saved) : {};
+  });
+  // Référence pour verrouiller les clics rapides sur une image
+  const voteLock = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    localStorage.setItem('likedImages', JSON.stringify(likedImages));
+  }, [likedImages]);
+
+  const handleToggleLike = async (imageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (voteLock.current[imageId]) return; // Si déjà en cours, ne rien faire
+    voteLock.current[imageId] = true;
+
+    const imageIndex = images.findIndex(image => image.id === imageId);
+    if (imageIndex === -1) {
+      voteLock.current[imageId] = false;
+      return;
+    }
+    const updatedImages = [...images];
+
+    if (!likedImages[imageId]) {
+      // Vote non appliqué : on vote
+      updatedImages[imageIndex] = {
+        ...updatedImages[imageIndex],
+        stats: {
+          ...updatedImages[imageIndex].stats,
+          likes: (updatedImages[imageIndex].stats.likes || 0) + 1,
+        },
+      };
+      setImages(updatedImages);
+      setLikedImages(prev => ({ ...prev, [imageId]: true }));
+
+      try {
+        await incrementImageLikes(imageId);
+      } catch (error: any) {
+        // En cas d'erreur autre que 404, on annule le vote
+        if (!(error.response && error.response.status === 404)) {
+          setLikedImages(prev => {
+            const newState = { ...prev };
+            delete newState[imageId];
+            return newState;
+          });
+          updatedImages[imageIndex] = {
+            ...updatedImages[imageIndex],
+            stats: {
+              ...updatedImages[imageIndex].stats,
+              likes: updatedImages[imageIndex].stats.likes - 1,
+            },
+          };
+          setImages(updatedImages);
+        }
+        // Sinon (404), on ignore l'erreur en mode optimiste
+      }
+    } else {
+      // Vote déjà appliqué : on annule le vote (toggle off)
+      updatedImages[imageIndex] = {
+        ...updatedImages[imageIndex],
+        stats: {
+          ...updatedImages[imageIndex].stats,
+          likes: updatedImages[imageIndex].stats.likes - 1,
+        },
+      };
+      setImages(updatedImages);
+      setLikedImages(prev => {
+        const newState = { ...prev };
+        delete newState[imageId];
+        return newState;
+      });
+      // Pas d'appel à l'API pour décrémenter afin d'éviter le 404
+    }
+    voteLock.current[imageId] = false;
+  };
 
   const fetchImages = useCallback(async (pageNum: number) => {
     try {
-      if (pageNum === 1) {
-        setLoading(true);
-      }
-      const newImages = await steamService.getScreenshots({
-        page: pageNum,
-      });
-
-      setImages(prev => pageNum === 1 ? newImages : [...prev, ...newImages]);
+      if (pageNum === 1) setLoading(true);
+      const newImages = await steamService.getScreenshots({ page: pageNum });
+      setImages(prev => (pageNum === 1 ? newImages : [...prev, ...newImages]));
       setHasMore(newImages.length > 0);
       setError(null);
     } catch (error) {
-      console.error('Erreur lors du chargement des images:', error);
-      setError('Impossible de charger les images. Veuillez réessayer plus tard.');
+      setError("Impossible de charger les images. Veuillez réessayer plus tard.");
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -72,13 +144,11 @@ export const CommunityGallery: React.FC = () => {
   const lastImageRef = useCallback((node: HTMLDivElement) => {
     if (loading) return;
     if (observer.current) observer.current.disconnect();
-    
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         setPage(prevPage => prevPage + 1);
       }
     });
-
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
@@ -88,52 +158,58 @@ export const CommunityGallery: React.FC = () => {
   }, [fetchImages]);
 
   useEffect(() => {
-    if (page > 1) {
-      fetchImages(page);
-    }
+    if (page > 1) fetchImages(page);
   }, [page, fetchImages]);
 
   const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}k`;
-    }
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
     return num.toString();
   };
 
   const filteredImages = React.useMemo(() => {
-    return images.filter(image => 
+    const base = images.filter(image =>
       image.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       image.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       image.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-  }, [images, searchQuery]);
+    return showLikedOnly ? base.filter(image => likedImages[image.id]) : base;
+  }, [images, searchQuery, showLikedOnly, likedImages]);
 
   return (
     <div className="community-gallery">
       <div className="gallery-container">
         <main className="gallery-content">
           <div className="gallery-header">
-            <h1>
-              <span className="gradient-text" data-text="Galerie">Galerie</span>
-              <span className="subtitle">Communautaire</span>
-            </h1>
-            <p>Explorez et partagez vos créations Space Engineers avec la communauté</p>
-            <div className="search-container">
-              <div className="search-bar">
-                <input
-                  type="text"
-                  placeholder="Rechercher des vaisseaux, stations, bases..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <BiSearch className="search-icon" />
+            <div className="header-left">
+              <h1>
+                <span className="gradient-text" data-text="Galerie">Galerie</span>
+                <span className="subtitle">Communautaire</span>
+              </h1>
+            </div>
+            <div className="header-right">
+              <div className="header-controls">
+                <button
+                  className={`toggle-liked-button ${showLikedOnly ? 'active' : ''}`}
+                  onClick={() => setShowLikedOnly(prev => !prev)}
+                >
+                  <BsHeartFill className="filter-icon" />
+                  {showLikedOnly ? "Toutes les images" : "Images likées"}
+                </button>
+                <div className="search-container">
+                  <div className="search-bar">
+                    <input
+                      type="text"
+                      placeholder="Rechercher des vaisseaux, stations, bases..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                    />
+                    <BiSearch className="search-icon" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
           {error ? (
             <div className="gallery-error">
               <p>{error}</p>
@@ -166,15 +242,15 @@ export const CommunityGallery: React.FC = () => {
                         <div className="author">
                           <div className="author-avatar">
                             {image.author.avatarUrl ? (
-                              <img 
-                                src={image.author.avatarUrl} 
+                              <img
+                                src={image.author.avatarUrl}
                                 alt={`Avatar de ${image.author.name}`}
-                                onError={(e) => {
+                                onError={e => {
                                   const img = e.target as HTMLImageElement;
                                   img.style.display = 'none';
                                   const parent = img.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<BiUser size={16} color="rgba(255, 255, 255, 0.9)" />`;
+                                    parent.innerHTML = '<BiUser size={16} color="rgba(255, 255, 255, 0.9)" />';
                                   }
                                 }}
                               />
@@ -183,39 +259,47 @@ export const CommunityGallery: React.FC = () => {
                             )}
                           </div>
                           {image.author.profileUrl !== '#' ? (
-                            <a 
-                              href={image.author.profileUrl} 
-                              target="_blank" 
+                            <a
+                              href={image.author.profileUrl}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="author-link"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={e => e.stopPropagation()}
                             >
                               {image.author.name}
                             </a>
                           ) : (
-                            <span className="author-link">
-                              {image.author.name}
-                            </span>
+                            <span className="author-link">{image.author.name}</span>
                           )}
                         </div>
                         <div className="image-stats">
-                          <span title="J'aime">
-                            <BiHeart /> {formatNumber(image.stats.likes)}
-                          </span>
-                          <span title="Commentaires">
-                            <BiComment /> {formatNumber(image.stats.comments)}
-                          </span>
+                          <div className="analytics-stats">
+                            <span title="J'aime" className={likedImages[image.id] ? 'liked' : ''}>
+                              <BsHeartFill /> {formatNumber(image.stats.likes)}
+                            </span>
+                            <span title="Commentaires">
+                              <BiComment /> {formatNumber(image.stats.comments)}
+                            </span>
+                          </div>
+                          <div className="vote-button-container">
+                            <button
+                              className={`vote-button ${likedImages[image.id] ? 'voted' : ''}`}
+                              onClick={e => handleToggleLike(image.id, e)}
+                              title={likedImages[image.id] ? "Retirer mon like" : "J'aime"}
+                              disabled={!!voteLock.current[image.id]}
+                            >
+                              {likedImages[image.id] ? <BsHeartFill /> : <BsHeart />}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-
               {loading && <SkeletonGrid />}
             </>
           )}
-
           {selectedImage && (
             <ImageModal
               screenshot={selectedImage}
