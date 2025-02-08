@@ -308,6 +308,7 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       .replace(/\[\/list\]/gi, '')
       .replace(/\[\*\]/gi, '• ')
 
+
     // Récupérer le contenu complet
     let fullContent = initialContent
     if (newsItem.url) {
@@ -352,7 +353,8 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
                 .replace(/\n\s*\n/g, '\n\n')
                 .replace(/\s+/g, ' ')
                 .replace(/>\s+</g, '><')
-                .trim()
+                .replace(/\n/g, '<br>')
+
 
               // Structurer le contenu en paragraphes
               if (!cleanContent.includes('<p')) {

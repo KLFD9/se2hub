@@ -4,7 +4,7 @@ import { Hero } from './components/Hero';
 import { FeaturesGrid } from './components/FeaturesGrid';
 import { CommunityGallery } from './components/CommunityGallery';
 import { ArticlePage } from './components/ArticlePage';
-import { Footer } from './components/Footer'
+import { Footer } from './components/Footer';
 import './styles/App.css'
 import React from 'react';
 
@@ -13,6 +13,8 @@ const HomePage: React.FC = () => {
     <main>
       <Hero />
       <FeaturesGrid />
+      <section className="social-section" id="social-section">
+      </section>
     </main>
   );
 };
