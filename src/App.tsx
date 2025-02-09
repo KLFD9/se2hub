@@ -5,7 +5,9 @@ import { FeaturesGrid } from './components/FeaturesGrid';
 import { CommunityGallery } from './components/CommunityGallery';
 import { ArticlePage } from './components/ArticlePage';
 import { Footer } from './components/Footer';
-import './styles/App.css'
+import YoutubeLogsPage from './pages/YoutubeLogsPage';
+import SpaceflixPage from './pages/SpaceflixPage';
+import './styles/App.css';
 import React from 'react';
 
 const HomePage: React.FC = () => {
@@ -13,8 +15,7 @@ const HomePage: React.FC = () => {
     <main>
       <Hero />
       <FeaturesGrid />
-      <section className="social-section" id="social-section">
-      </section>
+      <section className="social-section" id="social-section"></section>
     </main>
   );
 };
@@ -28,6 +29,8 @@ const App: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/gallery" element={<CommunityGallery />} />
           <Route path="/article/:id" element={<ArticlePage />} />
+          <Route path="/youtube-logs" element={<YoutubeLogsPage />} />
+          <Route path="/spaceflix" element={<SpaceflixPage />} />
         </Routes>
         <Footer />
       </div>
