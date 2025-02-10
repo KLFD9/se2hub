@@ -21,30 +21,53 @@ function formatDuration(isoDuration: string): string {
 }
 
 const CACHE_KEY = 'youtube_videos_cache';
-const CACHE_DURATION = 1000 * 60 * 60; // 1 heure
+const CACHE_DURATION = 1000 * 60 * 60 * 4; // 4 heures de cache
 
 interface CacheData {
   data: VideosResponse;
   timestamp: number;
+  pageTokens: {
+    [key: string]: VideosResponse;
+  };
 }
 
-function loadCache(): CacheData | null {
+function loadCache(pageToken: string = ''): VideosResponse | null {
   const cached = localStorage.getItem(CACHE_KEY);
   if (cached) {
     const parsedCache = JSON.parse(cached) as CacheData;
     if (Date.now() - parsedCache.timestamp < CACHE_DURATION) {
-      return parsedCache;
+      if (pageToken && parsedCache.pageTokens[pageToken]) {
+        return parsedCache.pageTokens[pageToken];
+      } else if (!pageToken) {
+        return parsedCache.data;
+      }
+    } else {
+      localStorage.removeItem(CACHE_KEY);
     }
-    localStorage.removeItem(CACHE_KEY);
   }
   return null;
 }
 
-function saveCache(data: VideosResponse): void {
-  const cacheData: CacheData = {
-    data,
-    timestamp: Date.now()
-  };
+function saveCache(data: VideosResponse, pageToken: string = ''): void {
+  let cacheData: CacheData;
+  const existing = localStorage.getItem(CACHE_KEY);
+
+  if (existing) {
+    cacheData = JSON.parse(existing) as CacheData;
+    if (pageToken) {
+      cacheData.pageTokens[pageToken] = data;
+    } else {
+      cacheData.data = data;
+      cacheData.timestamp = Date.now();
+    }
+  } else {
+    cacheData = {
+      data,
+      timestamp: Date.now(),
+      pageTokens: {}
+    };
+  }
+
   localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
 }
 
@@ -72,111 +95,99 @@ async function makeYoutubeRequest(url: string) {
 }
 
 export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<VideosResponse> {
-  // Vérifier le cache pour la première page
-  if (!pageToken) {
-    const cachedData = loadCache();
-    if (cachedData) {
-      console.log("Returning cached data from localStorage");
-      return cachedData.data;
-    }
+  // Vérifier le cache
+  const cachedData = loadCache(pageToken);
+  if (cachedData) {
+    console.log("Returning cached data from localStorage", pageToken ? "for page token: " + pageToken : "for first page");
+    return cachedData;
   }
 
   const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-  const query = "Space Engineers 2";
-  const maxResults = 5;
+  const maxResults = 12;
 
   try {
     console.group("YouTube API Request");
     
-    // Construction de l'URL de recherche
     const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search');
     searchUrl.searchParams.append('part', 'snippet');
-    searchUrl.searchParams.append('q', query);
+    searchUrl.searchParams.append('q', '"Space Engineers 2" gameplay');
     searchUrl.searchParams.append('type', 'video');
     searchUrl.searchParams.append('maxResults', maxResults.toString());
     searchUrl.searchParams.append('key', apiKey);
-    searchUrl.searchParams.append('relevanceLanguage', 'fr');
+    searchUrl.searchParams.append('order', 'date'); // Trier par date
+    searchUrl.searchParams.append('videoDefinition', 'high'); // Uniquement les vidéos HD
+    searchUrl.searchParams.append('publishedAfter', new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()); // Dernier mois
+
     if (pageToken) {
       searchUrl.searchParams.append('pageToken', pageToken);
     }
 
-    console.log("Search URL:", searchUrl.toString());
     const searchData = await makeYoutubeRequest(searchUrl.toString());
-
-    const videoIds = searchData.items.map((item: any) => item.id.videoId).join(',');
+    
+    const videoIds = searchData.items?.map((item: any) => item.id.videoId).join(',');
     if (!videoIds) {
       console.log("No video IDs found");
-      return { videos: [] };
+      return { videos: [], nextPageToken: undefined };
     }
 
-    console.group("YouTube Video Details Request");
     const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos');
     detailsUrl.searchParams.append('part', 'snippet,contentDetails,statistics');
     detailsUrl.searchParams.append('id', videoIds);
     detailsUrl.searchParams.append('key', apiKey);
-    detailsUrl.searchParams.append('fields', 'items(id,snippet(title,description,thumbnails,channelTitle,channelId),contentDetails/duration,statistics/viewCount)');
+    detailsUrl.searchParams.append('fields', 'items(id,snippet(title,description,thumbnails,channelTitle,channelId,publishedAt),contentDetails/duration,statistics/viewCount)');
 
-    console.log("Details URL:", detailsUrl.toString());
     const detailsData = await makeYoutubeRequest(detailsUrl.toString());
-    console.groupEnd();
 
-    // Filtrer les vidéos selon la catégorie et le titre
-    const filteredVideos = detailsData.items.filter((item: any) => {
-      const snippet = item.snippet;
-      return snippet.categoryId === "20" &&
-             snippet.title.toLowerCase().includes("space") &&
-             snippet.title.toLowerCase().includes("engineers");
-    });
-    console.group("Filtered Videos");
-    console.log("Nombre de vidéos filtrées:", filteredVideos.length);
-    console.groupEnd();
+    // Récupérer les IDs des chaînes uniques
+    const channelIds = [...new Set(detailsData.items.map((item: any) => item.snippet.channelId))].join(',');
 
-    // Récupérer les IDs de chaîne uniques
-    const channelIds = Array.from(new Set(filteredVideos.map((item: any) => item.snippet.channelId)));
-    let channelThumbnails: { [key: string]: string } = {};
-    if (channelIds.length > 0) {
-      console.group("YouTube Channels Request");
-      const channelsUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
-      channelsUrl.searchParams.append('part', 'snippet');
-      channelsUrl.searchParams.append('id', channelIds.join(','));
-      channelsUrl.searchParams.append('key', apiKey);
-      channelsUrl.searchParams.append('fields', 'items(id,snippet/thumbnails)');
+    // Récupérer les avatars des chaînes en une seule requête
+    const channelsUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+    channelsUrl.searchParams.append('part', 'snippet');
+    channelsUrl.searchParams.append('id', channelIds);
+    channelsUrl.searchParams.append('key', apiKey);
+    channelsUrl.searchParams.append('fields', 'items(id,snippet/thumbnails)');
 
-      console.log("Channels URL:", channelsUrl.toString());
-      const channelsData = await makeYoutubeRequest(channelsUrl.toString());
-      channelsData.items.forEach((channel: any) => {
-        channelThumbnails[channel.id] = channel.snippet.thumbnails?.default?.url || channel.snippet.thumbnails?.high?.url || "";
-      });
-      console.groupEnd();
-    }
+    const channelsData = await makeYoutubeRequest(channelsUrl.toString());
+    const channelAvatars = new Map(
+      channelsData.items.map((channel: any) => [
+        channel.id,
+        channel.snippet.thumbnails.default?.url ||
+        channel.snippet.thumbnails.medium?.url ||
+        undefined
+      ])
+    );
 
-    // Construire le tableau final de vidéos avec les données enrichies
-    const videos: Video[] = filteredVideos.map((item: any) => ({
+    // Transformer les données en format Video
+    const videos: Video[] = detailsData.items.map((item: any) => ({
       id: item.id,
       title: item.snippet.title,
       description: item.snippet.description,
-      thumbnailUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
-      publishedAt: item.snippet.publishedAt,
-      duration: formatDuration(item.contentDetails.duration),
-      keywords: item.snippet.tags || [],
-      category: "Gaming",
+      thumbnailUrl: item.snippet.thumbnails.maxres?.url || 
+                   item.snippet.thumbnails.high?.url || 
+                   item.snippet.thumbnails.medium?.url || 
+                   item.snippet.thumbnails.default?.url,
       channelTitle: item.snippet.channelTitle,
-      channelThumbnailUrl: channelThumbnails[item.snippet.channelId] || "",
-      viewCount: item.statistics?.viewCount || "0"
+      channelId: item.snippet.channelId,
+      channelThumbnailUrl: channelAvatars.get(item.snippet.channelId),
+      duration: formatDuration(item.contentDetails.duration),
+      viewCount: item.statistics.viewCount,
+      publishedAt: item.snippet.publishedAt
     }));
 
-    const response = { videos, nextPageToken: searchData.nextPageToken };
-    
-    // Mettre en cache seulement la première page
-    if (!pageToken) {
-      saveCache(response);
-    }
-    
-    return response;
-  } catch (error) {
-    console.group("YouTube API Error");
-    console.error(error);
+    const response = {
+      videos,
+      nextPageToken: searchData.nextPageToken
+    };
+
+    // Sauvegarder dans le cache uniquement la première page
+    saveCache(response, pageToken);
+
     console.groupEnd();
-    return { videos: [] };
+    return response;
+
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+    throw error;
   }
 }

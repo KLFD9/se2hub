@@ -1,16 +1,13 @@
 // src/types/Video.ts
 export interface Video {
-    id: string;
-    title: string;
-    description: string;
-    thumbnailUrl: string;
-    publishedAt: string;
-    duration?: string;
-    keywords?: string[];
-    category?: string;
-    channelTitle?: string;
-    channelThumbnailUrl?: string;
-    viewCount?: string;
-    language?: string;
-  }
-  
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;  // Renommé de thumbnail
+  channelTitle: string;
+  channelId: string;
+  channelThumbnailUrl?: string;
+  duration: string;
+  viewCount: string;
+  publishedAt: string;
+}
