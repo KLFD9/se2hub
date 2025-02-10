@@ -1,5 +1,5 @@
-// src/components/youtube/YoutubeVideos.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+// import { NodeJS } from 'node';
 import { Video } from '../../types/Video';
 import { getSpaceEngineers2Videos, VideosResponse } from '../../services/youtubeService';
 import YoutubeVideoCard from './YoutubeVideoCard';
@@ -12,55 +12,83 @@ const YoutubeVideos: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [quotaError, setQuotaError] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Chargement initial
   const loadVideos = useCallback(async (pageToken: string = '', reset: boolean = false) => {
+    if (quotaError || (!reset && !hasMore)) return;
+    
     if (reset) {
       setLoading(true);
+      setHasMore(true);
     } else {
       setLoadingMore(true);
     }
+
     try {
       const response: VideosResponse = await getSpaceEngineers2Videos(pageToken);
+      
       setVideos(prev => reset ? response.videos : [...prev, ...response.videos]);
       setNextPageToken(response.nextPageToken);
+      setHasMore(!!response.nextPageToken && response.videos.length > 0);
       setQuotaError(false);
     } catch (error) {
       if (error instanceof Error && error.message.includes('quota')) {
         setQuotaError(true);
       }
-      console.error(error);
+      console.error('Error loading videos:', error);
+      setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [quotaError, hasMore]);
 
   useEffect(() => {
     loadVideos();
-  }, [loadVideos]);
+    // Cleanup function to avoid memory leaks
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, []);
 
-  // Infinite Scroll
+  // Infinite Scroll with debounce
   useEffect(() => {
-    const observer = new IntersectionObserver(entries => {
+    if (!hasMore || loadingMore || loading) {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+      return;
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    
+    observerRef.current = new IntersectionObserver(entries => {
       const entry = entries[0];
-      if (entry.isIntersecting && nextPageToken && !loadingMore) {
-        loadVideos(nextPageToken);
+      if (entry.isIntersecting && nextPageToken) {
+        // Add debounce to prevent multiple calls
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          loadVideos(nextPageToken);
+        }, 500);
       }
     }, { threshold: 0.5 });
     
     if (sentinelRef.current) {
-      observer.observe(sentinelRef.current);
+      observerRef.current.observe(sentinelRef.current);
     }
     
     return () => {
-      if (sentinelRef.current) {
-        observer.unobserve(sentinelRef.current);
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
+      clearTimeout(timeoutId);
     };
-  }, [nextPageToken, loadingMore, loadVideos]);
+  }, [nextPageToken, loadingMore, loading, hasMore, loadVideos]);
 
   // Fonction de rafraîchissement
   const handleRefresh = () => {
@@ -69,9 +97,14 @@ const YoutubeVideos: React.FC = () => {
 
   return (
     <>
-      <button onClick={handleRefresh} style={{ margin: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>
+      <button 
+        onClick={handleRefresh} 
+        disabled={loading || loadingMore}
+        style={{ margin: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
+      >
         Rafraîchir
       </button>
+
       {quotaError && (
         <div style={{ 
           padding: '1rem', 
@@ -84,15 +117,28 @@ const YoutubeVideos: React.FC = () => {
           Le quota d'appels à l'API YouTube a été dépassé. Veuillez réessayer plus tard ou contacter l'administrateur.
         </div>
       )}
+
       <div className="youtube-videos">
-        {videos.map(video => (
-          <YoutubeVideoCard key={video.id} video={video} />
+        {videos.map((video, index) => (
+          <YoutubeVideoCard key={`${video.id}-${index}`} video={video} />
         ))}
-        {(loading || loadingMore) && [...Array(8)].map((_, index) => (
+        
+        {(loading || loadingMore) && [...Array(4)].map((_, index) => (
           <YoutubeVideoCardSkeleton key={`skeleton-${index}`} />
         ))}
-        {/* Élément sentinel pour déclencher l'infinite scroll */}
-        <div ref={sentinelRef} style={{ height: '1px' }}></div>
+
+        {!loading && !loadingMore && !hasMore && videos.length > 0 && (
+          <div style={{ 
+            gridColumn: '1/-1', 
+            textAlign: 'center', 
+            padding: '1rem',
+            color: '#666' 
+          }}>
+            Fin des résultats
+          </div>
+        )}
+
+        {hasMore && <div ref={sentinelRef} style={{ height: '1px' }}></div>}
       </div>
     </>
   );
