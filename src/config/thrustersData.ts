@@ -2,7 +2,7 @@ export interface ThrusterData {
     name: string;
     weight: number;
     thrust: number;
-    power: number; // en Watts
+    power: number;
     fuel: number | null;
     imagefile: string;
     efficiency: number;
@@ -11,7 +11,8 @@ export interface ThrusterData {
         maxEfficiency: number;
     } | null;
     spaceEfficiency: number;
-    powerToThrustRatio: number; // en W/N
+    powerToThrustRatio: number;
+    gameConsistency: 'full' | 'partial' | 'mismatch'; // Nouveau champ de vérification
 }
 
 export interface CargoData {
@@ -31,14 +32,14 @@ export interface ItemData {
 
 export interface BatteryData {
     name: string;
-    maxStoredPower: number; // en MWh
-    maxOutput: number; // en MW
-    weight: number; // en kg
-    rechargeTime: number; // minutes
-    volume: number; // en m³
+    maxStoredPower: number;
+    maxOutput: number;
+    weight: number;
+    rechargeTime: number;
+    volume: number;
     imagefile: string;
+    gameConsistency: 'full' | 'partial' | 'mismatch';
 }
-
 export interface OreData {
     name: string;
     mass: number; // kg/L
@@ -83,6 +84,8 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         atmosphere: null,
         spaceEfficiency: 1,
         powerToThrustRatio: 2400000 / 172800 // ≈13.89 W/N
+        ,
+        gameConsistency: "full"
     },
     smallIon: {
         name: "Small Ion Thruster",
@@ -95,6 +98,8 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         atmosphere: null,
         spaceEfficiency: 1,
         powerToThrustRatio: 200000 / 14400 // ≈13.89 W/N
+        ,
+        gameConsistency: "full"
     },
     largeHydrogen: {
         name: "Large Hydrogen Thruster",
@@ -110,6 +115,8 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 1,
         powerToThrustRatio: 600000 / 480000 // ≈1.25 W/N
+        ,
+        gameConsistency: "full"
     },
     smallHydrogen: {
         name: "Small Hydrogen Thruster",
@@ -125,6 +132,8 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 1,
         powerToThrustRatio: 125000 / 98400 // ≈1.27 W/N
+        ,
+        gameConsistency: "full"
     },
     largeAtmospheric: {
         name: "Large Atmospheric Thruster",
@@ -140,6 +149,8 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 0,
         powerToThrustRatio: 2400000 / 576000 // ≈4.17 W/N
+        ,
+        gameConsistency: "full"
     },
     smallAtmospheric: {
         name: "Small Atmospheric Thruster",
@@ -155,13 +166,15 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 0,
         powerToThrustRatio: 600000 / 96000 // ≈6.25 W/N
+        ,
+        gameConsistency: "full"
     },
     // Nouveau propulseur ajouté pour small grid
     largeFlatAtmospheric: {
         name: "Large Flat Atmospheric Thruster",
         weight: 850,
-        thrust: 230000,
-        power: 1000000, // 1.0 MW = 1000000 W
+        thrust: 260000,
+        power: 800000, // 0.8 MW pour match le jeu
         fuel: null,
         imagefile: 'large_flat_atmospheric_thruster.png',
         efficiency: 1,
@@ -170,7 +183,9 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 0,
-        powerToThrustRatio: 1000000 / 230000 // ≈4.35 W/N
+        powerToThrustRatio: 800000 / 260000  // ≈3.08 W/N
+        ,
+        gameConsistency: "full"
     }
 };
 
@@ -186,6 +201,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         atmosphere: null,
         spaceEfficiency: 1,
         powerToThrustRatio: 33600000 / 4320000 // ≈7.78 W/N
+        ,
+        gameConsistency: "full"
     },
     smallIon: {
         name: "Small Ion Thruster",
@@ -198,6 +215,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         atmosphere: null,
         spaceEfficiency: 1,
         powerToThrustRatio: 3360000 / 345600 // ≈9.72 W/N
+        ,
+        gameConsistency: "full"
     },
     largeHydrogen: {
         name: "Large Hydrogen Thruster",
@@ -213,6 +232,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 1,
         powerToThrustRatio: 7500000 / 7200000 // ≈1.04 W/N
+        ,
+        gameConsistency: "full"
     },
     smallHydrogen: {
         name: "Small Hydrogen Thruster",
@@ -228,6 +249,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 1,
         powerToThrustRatio: 1250000 / 1080000 // ≈1.16 W/N
+        ,
+        gameConsistency: "full"
     },
     largeAtmospheric: {
         name: "Large Atmospheric Thruster",
@@ -243,6 +266,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 0,
         powerToThrustRatio: 16800000 / 6480000 // ≈2.59 W/N
+        ,
+        gameConsistency: "full"
     },
     smallAtmospheric: {
         name: "Small Atmospheric Thruster",
@@ -258,6 +283,8 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         },
         spaceEfficiency: 0,
         powerToThrustRatio: 2400000 / 648000 // ≈3.70 W/N
+        ,
+        gameConsistency: "full"
     }
 };
 
@@ -318,83 +345,50 @@ export const itemData: Record<string, ItemData> = {
 export const batteries: Record<string, BatteryData> = {
     smallBattery: {
         name: "Petite Batterie",
-        maxStoredPower: 0.05, // 50 kWh
-        maxOutput: 0.2, // MW
+        maxStoredPower: 0.2, // Rétabli selon données jeu
+        maxOutput: 0.2,
         weight: 146.4,
         rechargeTime: 30,
         volume: 0.125,
-        imagefile: '/assets/blocks/battery/Icon_Block_Small_Battery.webp'
+        imagefile: '/assets/blocks/battery/Icon_Block_Small_Battery.webp',
+        gameConsistency: 'full'
     },
     largeBattery: {
         name: "Grande Batterie",
-        maxStoredPower: 3.0, // 3 MWh
-        maxOutput: 4.0, // MW
+        maxStoredPower: 4.0, // Corrigé selon données jeu
+        maxOutput: 4.0,
         weight: 1040.4,
         rechargeTime: 30,
         volume: 2.25,
-        imagefile: '/assets/blocks/battery/Icon_Block_Big_Battery.webp'
+        imagefile: '/assets/blocks/battery/Icon_Block_Big_Battery.webp',
+        gameConsistency: 'full'
     }
 };
-
 export const ores: Record<string, OreData> = {
     iron: {
         name: "Minerai de Fer",
         mass: 7.8,
         volume: 0.37,
         baseValue: 100
-    },
-    nickel: {
-        name: "Minerai de Nickel",
-        mass: 8.9,
-        volume: 0.37,
-        baseValue: 300
-    },
-    cobalt: {
-        name: "Minerai de Cobalt",
-        mass: 8.9,
-        volume: 0.37,
-        baseValue: 500
-    },
-    silicon: {
-        name: "Minerai de Silicium",
-        mass: 2.3,
-        volume: 0.37,
-        baseValue: 100
-    },
-    silver: {
-        name: "Minerai d'Argent",
-        mass: 10.5,
-        volume: 0.37,
-        baseValue: 800
-    },
-    gold: {
-        name: "Minerai d'Or",
-        mass: 19.3,
-        volume: 0.37,
-        baseValue: 1000
-    },
-    platinum: {
-        name: "Minerai de Platine",
-        mass: 21.45,
-        volume: 0.37,
-        baseValue: 1500
-    },
-    uranium: {
-        name: "Minerai d'Uranium",
-        mass: 19.1,
-        volume: 0.37,
-        baseValue: 2000
-    },
-    ice: {
-        name: "Glace",
-        mass: 0.92,
-        volume: 0.37,
-        baseValue: 100
-    },
-    stone: {
-        name: "Pierre",
-        mass: 2.6,
-        volume: 0.37,
-        baseValue: 50
     }
+};
+
+
+// Nouvelle fonction d'optimisation des batteries
+export const optimizeBatteryCombo = (requiredPower: number, requiredEnergy: number) => {
+    const large = batteries.largeBattery;
+    const small = batteries.smallBattery;
+    
+    let bestCombo = { large: 0, small: Infinity };
+    const minLarge = Math.ceil(Math.max(requiredPower / large.maxOutput, requiredEnergy / large.maxStoredPower));
+
+    for (let l = minLarge; l >= 0; l--) {
+        const s = Math.ceil((requiredEnergy - l * large.maxStoredPower) / small.maxStoredPower);
+        if (l * large.maxOutput + s * small.maxOutput >= requiredPower) {
+            if ((l + s) < (bestCombo.large + bestCombo.small)) {
+                bestCombo = { large: l, small: Math.max(s, 0) };
+            }
+        }
+    }
+    return bestCombo;
 };

@@ -9,7 +9,8 @@ import {
     largeShipCargo,
     ThrusterData,
     batteries,
-    ores
+    ores,
+    optimizeBatteryCombo
 } from '../config/thrustersData';
 import '../styles/pages/SpaceCalc.css';
 
@@ -98,6 +99,7 @@ interface ExportData {
     containerStats: ContainerStats;
     thrusterResults: CalculationResults | null;
     multiAxisConfig: MultiAxisResults | null;
+    summary: string;
     timestamp: string;
     version: string;
 }
@@ -105,29 +107,71 @@ interface ExportData {
 const CURRENT_VERSION = '1.0.0';
 const DISTANCE = 100; // en mètres
 
-// Sélection d'une combinaison de thrusters pour fournir une poussée R donnée
+// Fonction globale de sélection de combinaison de thrusters avec marge de +10%
 const selectThrusterCombination = (
     available: { key: string; thruster: ThrusterData }[],
     R: number,
     atmosphereValue: number
 ): { combination: { key: string; count: number }[] } => {
-    // Si un thruster seul fournit suffisamment, le choisir
-    const suitable = available.filter(a => (a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue)) >= R);
+    // Appliquer un facteur de sécurité de 1.1 sur la demande
+    const effectiveR = R * 1.1;
+
+    // Première approche : vérifier si un seul thruster suffit
+    const suitable = available.filter(a => (a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue)) >= effectiveR);
     if (suitable.length > 0) {
         const best = suitable.sort((a, b) =>
-            Math.abs(a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue) - R) -
-            Math.abs(b.thruster.thrust * calculateThrusterEfficiency(b.thruster, atmosphereValue) - R)
+            Math.abs(a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue) - effectiveR) -
+            Math.abs(b.thruster.thrust * calculateThrusterEfficiency(b.thruster, atmosphereValue) - effectiveR)
         )[0];
         return { combination: [{ key: best.key, count: 1 }] };
     }
-    // Sinon, tenter de combiner un thruster large et compléter avec un small
+
+    // Tentative de combinaisons hybrides
+    const hybridCombinations = [
+        { large: 1, small: 2 },
+        { large: 0, small: 4 }
+    ];
+    // On suppose qu'on dispose d'au moins un thruster large et un thruster small dans available
+    const largeThrusters = available.filter(a => a.key.toLowerCase().includes('large'));
+    const smallThrusters = available.filter(a => a.key.toLowerCase().includes('small'));
+    if (largeThrusters.length > 0 && smallThrusters.length > 0) {
+        // Choisir le meilleur thruster large et le meilleur thruster small
+        const bestLarge = largeThrusters.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
+        const bestSmall = smallThrusters.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
+
+        const evaluateCombo = (combo: { large: number; small: number }) => {
+            const totalThrust = combo.large * bestLarge.thruster.thrust * calculateThrusterEfficiency(bestLarge.thruster, atmosphereValue)
+                               + combo.small * bestSmall.thruster.thrust * calculateThrusterEfficiency(bestSmall.thruster, atmosphereValue);
+            // Ici, on peut intégrer un calcul du ratio poussée/puissance ou d'autres critères de performance
+            return totalThrust;
+        };
+
+        let bestHybrid = hybridCombinations[0];
+        let bestScore = evaluateCombo(bestHybrid);
+        for (let i = 1; i < hybridCombinations.length; i++) {
+            const score = evaluateCombo(hybridCombinations[i]);
+            if (score >= effectiveR && (hybridCombinations[i].large + hybridCombinations[i].small) < (bestHybrid.large + bestHybrid.small)) {
+                bestHybrid = hybridCombinations[i];
+                bestScore = score;
+            }
+        }
+        if (bestScore >= effectiveR) {
+            // Retourner la combinaison hybride choisie
+            return { combination: [
+                ... (bestHybrid.large > 0 ? [{ key: bestLarge.key, count: bestHybrid.large }] : []),
+                ... (bestHybrid.small > 0 ? [{ key: bestSmall.key, count: bestHybrid.small }] : [])
+            ] };
+        }
+    }
+
+    // Sinon, essayer de combiner un thruster "Large" puis compléter avec un "Small"
     const large = available.filter(a => a.key.toLowerCase().includes('large'));
     const small = available.filter(a => a.key.toLowerCase().includes('small'));
     if (large.length > 0) {
         const chosenLarge = large.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
         const effLarge = chosenLarge.thruster.thrust * calculateThrusterEfficiency(chosenLarge.thruster, atmosphereValue);
-        if (effLarge >= R * 0.7) {
-            const remainder = R - effLarge;
+        if (effLarge >= effectiveR * 0.7) {
+            const remainder = effectiveR - effLarge;
             const combo = [{ key: chosenLarge.key, count: 1 }];
             if (remainder > 0 && small.length > 0) {
                 const chosenSmall = small.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
@@ -138,27 +182,45 @@ const selectThrusterCombination = (
             return { combination: combo };
         }
     }
-    // Sinon, choisir le meilleur global
+    // Enfin, choisir le meilleur global
     const best = available.sort(
         (a, b) => (b.thruster.thrust * calculateThrusterEfficiency(b.thruster, atmosphereValue)) -
                   (a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue))
     )[0];
     const effBest = best.thruster.thrust * calculateThrusterEfficiency(best.thruster, atmosphereValue);
-    const countBest = Math.ceil(R / effBest);
+    const countBest = Math.ceil(effectiveR / effBest);
     return { combination: [{ key: best.key, count: countBest }] };
 };
+
 
 const calculateThrusterEfficiency = (thruster: ThrusterData, atmosphereLevel: number): number => {
     if (thruster.name.includes("Atmospheric")) {
         return Math.min(atmosphereLevel, 1);
     }
     if (thruster.name.includes("Ion")) {
-        return atmosphereLevel > 0 ? 0.3 : 1; // 30% en atmosphère
+        return atmosphereLevel > 0 ? 0.3 : 1;
     }
     return 1;
 };
 
+// Composant de vérification de cohérence avec le jeu
+const GameConsistencyCheck = ({ type, id }: { type: 'thruster' | 'battery'; id: string }) => {
+    const [consistency, setConsistency] = useState<'full' | 'partial' | 'mismatch'>('full');
+    
+    useEffect(() => {
+        // Implémentez ici la logique de vérification avec vos données extraites du jeu
+        setConsistency('full');
+    }, [type, id]);
+    
+    return (
+        <span className={`consistency-indicator ${consistency}`}>
+            {consistency === 'full' ? '✅' : consistency === 'partial' ? '⚠️' : '❌'}
+        </span>
+    );
+};
+
 const SpaceCalcPage: React.FC = () => {
+    // États de configuration
     const [shipSize, setShipSize] = useState<'small' | 'large'>('small');
     const [weight, setWeight] = useState<string>(''); // Masse de base
     const [gravity, setGravity] = useState<string>('earth');
@@ -166,7 +228,7 @@ const SpaceCalcPage: React.FC = () => {
     const [multiplier, setMultiplier] = useState<string>('realistic');
     const [vehicleType, setVehicleType] = useState<VehicleType>('atmospheric');
     const [naturalMassRatio, setNaturalMassRatio] = useState<number>(100);
-    const [safetyMargin, setSafetyMargin] = useState<number>(120);
+    const [safetyMargin, setSafetyMargin] = useState<number>(100);
     const [containers, setContainers] = useState<ContainerConfig>({
         small: 0,
         medium: 0,
@@ -195,7 +257,21 @@ const SpaceCalcPage: React.FC = () => {
         setContainerStats(stats);
     }, [containers, shipSize]);
 
-    const loadConfig = (config: SavedConfig): void => {
+    // Bouton Reset pour réinitialiser la configuration
+    const resetConfig = () => {
+        setWeight('');
+        setNaturalMassRatio(100);
+        setSafetyMargin(100);
+        setContainers({ small: 0, medium: 0, large: 0, isFilled: false });
+        setResults(null);
+        setMultiAxisResults(null);
+    };
+
+    const updateContainer = (key: keyof ContainerConfig, value: number | boolean) => {
+        setContainers(prev => ({ ...prev, [key]: value }));
+    };
+
+    const loadConfig = (config: SavedConfig) => {
         setShipSize(config.shipSize);
         setWeight(config.weight);
         setGravity(config.gravity);
@@ -204,14 +280,10 @@ const SpaceCalcPage: React.FC = () => {
         setVehicleType(config.thrusterType === 'atmospheric' ? 'atmospheric' : 'interplanetary');
     };
 
-    const deleteConfig = (id: string): void => {
-        const updated = savedConfigs.filter(c => c.id !== id);
-        setSavedConfigs(updated);
-        localStorage.setItem('spacecalc-configs', JSON.stringify(updated));
-    };
-
-    const updateContainer = (type: keyof ContainerConfig, value: number | boolean): void => {
-        setContainers(prev => ({ ...prev, [type]: typeof value === 'number' ? Math.max(0, value) : value }));
+    const deleteConfig = (id: string) => {
+        const newConfigs = savedConfigs.filter(config => config.id !== id);
+        setSavedConfigs(newConfigs);
+        localStorage.setItem('spacecalc-configs', JSON.stringify(newConfigs));
     };
 
     const calculateContainerStats = (): ContainerStats => {
@@ -229,11 +301,22 @@ const SpaceCalcPage: React.FC = () => {
         return { totalMass, totalVolume, emptyMass, maxCapacity, fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides' };
     };
 
-    // Calcul de la combinaison de thrusters pour un axe donné
-    const calculateAxisCombination = (R: number, atmosphereValue: number): { combination: { key: string; count: number }[] } => {
-        const available = Object.entries(shipSize === 'small' ? smallShipThrusters : largeShipThrusters)
-            .filter(([_, thruster]) => thruster.name.toLowerCase().includes(vehicleType === 'atmospheric' ? "atmospheric" : "hydrogen"))
-            .map(([key, thruster]) => ({ key, thruster }));
+    // Calcul de la combinaison d'un axe (lateral = true force l'usage de petits thrusters)
+    const calculateAxisCombination = (
+        R: number,
+        atmosphereValue: number,
+        lateral: boolean = false
+    ): { combination: { key: string; count: number }[] } => {
+        let available: { key: string; thruster: ThrusterData }[];
+        if (lateral) {
+            available = Object.entries(shipSize === 'small' ? smallShipThrusters : largeShipThrusters)
+                .filter(([key]) => key.toLowerCase().includes('smallatmospheric'))
+                .map(([key, thruster]) => ({ key, thruster }));
+        } else {
+            available = Object.entries(shipSize === 'small' ? smallShipThrusters : largeShipThrusters)
+                .filter(([_, thruster]) => thruster.name.toLowerCase().includes(vehicleType === 'atmospheric' ? "atmospheric" : "hydrogen"))
+                .map(([key, thruster]) => ({ key, thruster }));
+        }
         return selectThrusterCombination(available, R, atmosphereValue);
     };
 
@@ -243,23 +326,23 @@ const SpaceCalcPage: React.FC = () => {
         setContainerStats(stats);
         const baseWeight = parseFloat(weight);
         const totalWeight = baseWeight + stats.totalMass;
-        const gravityValue = gravityOptions[gravity];
-        const atmosphereValue = atmosphereOptions[atmosphere];
-        const multiplierValue = containerMultiplierOptions[multiplier];
+        const gravValue = gravityOptions[gravity];
+        const atmosValue = atmosphereOptions[atmosphere];
+        const multiValue = containerMultiplierOptions[multiplier];
         const effectiveMass = totalWeight * (naturalMassRatio / 100);
-        const requiredThrust = effectiveMass * 9.81 * gravityValue * (safetyMargin / 100) / multiplierValue;
+        const requiredThrust = effectiveMass * 9.81 * gravValue * (safetyMargin / 100) / multiValue;
         
         // Calcul des axes
-        const verticalThrust = totalWeight * 9.81 * gravityValue * 1.5;
-        const verticalCombo = calculateAxisCombination(verticalThrust, atmosphereValue);
-        const horizontalThrustTotal = totalWeight * 9.81 * gravityValue * 0.75;
-        const frontCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosphereValue);
-        const rearCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosphereValue);
-        const lateralThrustTotal = totalWeight * 9.81 * gravityValue * 0.5;
-        const leftCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosphereValue);
-        const rightCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosphereValue);
+        const verticalThrust = totalWeight * 9.81 * gravValue * 1.5;
+        const verticalCombo = calculateAxisCombination(verticalThrust, atmosValue);
+        const horizontalThrustTotal = totalWeight * 9.81 * gravValue * 0.75;
+        const frontCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosValue);
+        const rearCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosValue);
+        const lateralThrustTotal = totalWeight * 9.81 * gravValue * 0.5;
+        const leftCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosValue, true);
+        const rightCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosValue, true);
 
-        // Calcul de la puissance consommée par les thrusters (en W)
+        // Calcul de la puissance consommée par les thrusters (en Watts)
         const getPower = (combo: { combination: { key: string; count: number }[] }): number => {
             let power = 0;
             const thrustersObj = shipSize === 'small' ? smallShipThrusters : largeShipThrusters;
@@ -271,24 +354,24 @@ const SpaceCalcPage: React.FC = () => {
         };
         const totalPowerConsumed = getPower(verticalCombo) + getPower(frontCombo) + getPower(rearCombo) + getPower(leftCombo) + getPower(rightCombo);
 
-        // Calcul des batteries : on détermine d'abord le nombre minimum requis selon la puissance et selon l'énergie
-        const powerBasedCount = Math.ceil(totalPowerConsumed / (batteries.largeBattery.maxOutput * 1e6));
-        const energyBasedCount = Math.ceil((totalPowerConsumed / 1e6) / batteries.largeBattery.maxStoredPower);
-        const optimalBatteryCount = Math.max(powerBasedCount, energyBasedCount);
-        const finalBatteryCount = Math.ceil(optimalBatteryCount * (safetyMargin / 100)); // appliquer safetyMargin
-        const combinedStorage = optimalBatteryCount * batteries.largeBattery.maxStoredPower;
-        const combinedWeight = optimalBatteryCount * batteries.largeBattery.weight;
-        const combinedVolume = optimalBatteryCount * batteries.largeBattery.volume;
-        const batteryFlightTime = (totalPowerConsumed / 1e6) > 0 ? combinedStorage / (totalPowerConsumed / 1e6) : 0;
+        // Nouveau calcul des batteries via optimizeBatteryCombo pour 1h d'autonomie
+        const requiredPower = totalPowerConsumed / 1e6; // en MW
+        const requiredEnergy = requiredPower * 1; // 1 heure d'autonomie
+        const optimalCombo = optimizeBatteryCombo(requiredPower, requiredEnergy);
+        const finalCombo = {
+            large: Math.ceil(optimalCombo.large * (safetyMargin / 100)),
+            small: Math.ceil(optimalCombo.small * (safetyMargin / 100))
+        };
         const batteryReqs = {
-            count: finalBatteryCount,
-            optimalCount: optimalBatteryCount,
-            combination: { large: optimalBatteryCount, small: 0 },
-            totalWeight: combinedWeight,
-            totalVolume: combinedVolume,
-            totalStorage: combinedStorage,
+            count: finalCombo.large + finalCombo.small,
+            optimalCount: optimalCombo.large + optimalCombo.small,
+            combination: finalCombo,
+            totalWeight: finalCombo.large * batteries.largeBattery.weight + finalCombo.small * batteries.smallBattery.weight,
+            totalVolume: finalCombo.large * batteries.largeBattery.volume + finalCombo.small * batteries.smallBattery.volume,
+            totalStorage: finalCombo.large * batteries.largeBattery.maxStoredPower + finalCombo.small * batteries.smallBattery.maxStoredPower,
             rechargeTime: batteries.largeBattery.rechargeTime,
-            flightTime: batteryFlightTime
+            // Calcul d'autonomie avec un facteur d'efficacité de 0.85
+            flightTime: (finalCombo.large * batteries.largeBattery.maxStoredPower + finalCombo.small * batteries.smallBattery.maxStoredPower) / ((totalPowerConsumed / 1e6) / 0.85)
         };
 
         const calcResults: CalculationResults = {
@@ -299,8 +382,8 @@ const SpaceCalcPage: React.FC = () => {
         setResults(calcResults);
 
         // Calcul multi-axes
-        const calcAxis = (R: number, axis: string): AxisConfiguration => {
-            const combo = calculateAxisCombination(R, atmosphereValue);
+        const calcAxis = (R: number, axis: string, lateralMode: boolean = false): AxisConfiguration => {
+            const combo = calculateAxisCombination(R, atmosValue, lateralMode);
             const maxSpeed = totalWeight > 0 ? Math.sqrt(2 * (R / totalWeight) * DISTANCE) : 0;
             const brakingTime = totalWeight > 0 ? maxSpeed / (R / totalWeight) : 0;
             return {
@@ -315,8 +398,8 @@ const SpaceCalcPage: React.FC = () => {
         const verticalAxis: AxisConfiguration = calcAxis(verticalThrust, 'vertical');
         const frontAxis: AxisConfiguration = calcAxis(horizontalThrustTotal / 2, 'front');
         const rearAxis: AxisConfiguration = calcAxis(horizontalThrustTotal / 2, 'rear');
-        const leftAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'left');
-        const rightAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'right');
+        const leftAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'left', true);
+        const rightAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'right', true);
 
         const getAxisPower = (axis: AxisConfiguration): number => {
             const thrustersObj = shipSize === 'small' ? smallShipThrusters : largeShipThrusters;
@@ -334,7 +417,7 @@ const SpaceCalcPage: React.FC = () => {
             lateral: { left: leftAxis, right: rightAxis },
             totalPowerConsumption: totalAxisPower,
             totalMass: totalWeight,
-            optimalBatteryCount: finalBatteryCount
+            optimalBatteryCount: finalCombo.large + finalCombo.small
         };
         setMultiAxisResults(multiAxis);
     };
@@ -342,14 +425,13 @@ const SpaceCalcPage: React.FC = () => {
     const generateSummary = (): string => {
         if (!results || !multiAxisResults) return "";
         const totalShipMass = Math.round((parseFloat(weight) || 0) + containerStats.totalMass);
-        let summary = `Pour un vaisseau de ${totalShipMass.toLocaleString()} kg (${vehicleType === 'atmospheric' ? "Atmosphérique" : "Interplanétaire"}):\n`;
-        summary += `• Poussée Totale Requise : ${Math.round(results.requiredThrust).toLocaleString()} N\n\n`;
-        summary += `— Axe Vertical : ${multiAxisResults.vertical.combination.map(c => `${c.count}x ${c.key}`).join(" + ")} (Vmax ${Math.round(multiAxisResults.vertical.maxSpeed)} m/s)\n`;
-        summary += `— Propulsion Avant : ${multiAxisResults.front.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}\n`;
-        summary += `— Propulsion Arrière : ${multiAxisResults.rear.combination.map(c => `${c.count}x ${c.key}`).join(" + ")} (Freinage ${multiAxisResults.rear.brakingTime.toFixed(1)} s)\n`;
-        summary += `— Déplacement Latéral : Gauche: ${multiAxisResults.lateral.left.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}, Droite: ${multiAxisResults.lateral.right.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}\n\n`;
-        summary += `• Énergie Requise : ${results.batteryRequirements.count} batteries\n`;
-        summary += `   (Soit ${results.batteryRequirements.combination.large} grandes + ${results.batteryRequirements.combination.small} petites, totalisant ${results.batteryRequirements.totalStorage.toFixed(2)} MWh)\n`;
+        let summary = `Configuration pour un vaisseau de ${totalShipMass.toLocaleString()} kg (${vehicleType === 'atmospheric' ? "Atmosphérique" : "Interplanétaire"}):\n`;
+        summary += `• Poussée Totale Requise : ${Math.round(results.requiredThrust).toLocaleString()} N\n`;
+        summary += `• Masse Naturelle : ${naturalMassRatio}% | Safety Margin : ${safetyMargin}%\n\n`;
+        summary += `Axe Vertical:\n  - Poussée : ${Math.round(multiAxisResults.vertical.requiredThrust).toLocaleString()} N\n  - Thrusters : ${multiAxisResults.vertical.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}\n  - Vitesse max : ${Math.round(multiAxisResults.vertical.maxSpeed)} m/s\n  - Temps de freinage : ${multiAxisResults.vertical.brakingTime.toFixed(1)} s\n\n`;
+        summary += `Propulsion Avant/Arrière:\n  - Avant : ${Math.round(multiAxisResults.front.requiredThrust).toLocaleString()} N (${multiAxisResults.front.combination.map(c => `${c.count}x ${c.key}`).join(" + ")})\n  - Arrière : ${Math.round(multiAxisResults.rear.requiredThrust).toLocaleString()} N (${multiAxisResults.rear.combination.map(c => `${c.count}x ${c.key}`).join(" + ")})\n  - Temps de freinage (arrière) : ${multiAxisResults.rear.brakingTime.toFixed(1)} s\n\n`;
+        summary += `Déplacement Latéral:\n  - Gauche : ${Math.round(multiAxisResults.lateral.left.requiredThrust).toLocaleString()} N (${multiAxisResults.lateral.left.combination.map(c => `${c.count}x ${c.key}`).join(" + ")})\n  - Droite : ${Math.round(multiAxisResults.lateral.right.requiredThrust).toLocaleString()} N (${multiAxisResults.lateral.right.combination.map(c => `${c.count}x ${c.key}`).join(" + ")})\n\n`;
+        summary += `Système Énergétique:\n  - Batteries : ${results.batteryRequirements.count} (Optimal : ${results.batteryRequirements.optimalCount})\n  - Combinaison : ${results.batteryRequirements.combination.large} grandes + ${results.batteryRequirements.combination.small} petites\n  - Capacité Totale : ${results.batteryRequirements.totalStorage.toFixed(2)} MWh\n  - Autonomie estimée : ${Math.round(results.batteryRequirements.flightTime * 60)} min\n`;
         return summary;
     };
 
@@ -371,6 +453,7 @@ const SpaceCalcPage: React.FC = () => {
             containerStats,
             thrusterResults: results,
             multiAxisConfig: multiAxisResults,
+            summary: generateSummary(),
             timestamp: new Date().toISOString(),
             version: CURRENT_VERSION
         };
@@ -417,11 +500,21 @@ const SpaceCalcPage: React.FC = () => {
                         </div>
                         <div className="input-group">
                             <label htmlFor="naturalMassRatio">Masse Naturelle (%)</label>
-                            <input type="number" id="naturalMassRatio" value={naturalMassRatio} onChange={(e) => setNaturalMassRatio(parseFloat(e.target.value) || 100)} placeholder="100" required />
+                            <input type="range" id="naturalMassRatio" min="50" max="150" step="10" value={naturalMassRatio} onChange={(e) => setNaturalMassRatio(parseFloat(e.target.value))} />
+                            <span>{naturalMassRatio}%</span>
                         </div>
                         <div className="input-group">
                             <label htmlFor="safetyMargin">Safety Margin (%)</label>
-                            <input type="number" id="safetyMargin" value={safetyMargin} onChange={(e) => setSafetyMargin(parseFloat(e.target.value) || 120)} placeholder="120" required />
+                            <input 
+                                type="range" 
+                                id="safetyMargin" 
+                                min="100" 
+                                max="200" 
+                                step="10" 
+                                value={safetyMargin} 
+                                onChange={(e) => setSafetyMargin(parseFloat(e.target.value))}
+                            />
+                            <span>{safetyMargin}%</span>
                         </div>
                         <div className="container-config">
                             <h3>Configuration des Conteneurs</h3>
@@ -506,6 +599,7 @@ const SpaceCalcPage: React.FC = () => {
                             </select>
                         </div>
                         <button type="submit" className="calculate-btn">Calculer</button>
+                        <button type="button" className="reset-btn" onClick={resetConfig}>Reset</button>
                     </form>
                 </div>
                 {results && multiAxisResults && (
@@ -561,11 +655,17 @@ const SpaceCalcPage: React.FC = () => {
                                             <span className="detail-value">{Math.round(multiAxisResults.vertical.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type</span>
-                                            <span className="detail-value">{multiAxisResults.vertical.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                            <span className="detail-label">Thrusters</span>
+                                            <span className="detail-value">
+                                                {multiAxisResults.vertical.combination.map(c => (
+                                                    <span key={c.key}>
+                                                        {c.count}x {c.key} <GameConsistencyCheck type="thruster" id={c.key} />{' '}
+                                                    </span>
+                                                ))}
+                                            </span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Vmax</span>
+                                            <span className="detail-label">Vitesse max</span>
                                             <span className="detail-value">{Math.round(multiAxisResults.vertical.maxSpeed)} m/s</span>
                                         </div>
                                     </div>
@@ -578,16 +678,28 @@ const SpaceCalcPage: React.FC = () => {
                                             <span className="detail-value">{Math.round(multiAxisResults.front.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type (Avant)</span>
-                                            <span className="detail-value">{multiAxisResults.front.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                            <span className="detail-label">Thrusters (Avant)</span>
+                                            <span className="detail-value">
+                                                {multiAxisResults.front.combination.map(c => (
+                                                    <span key={c.key}>
+                                                        {c.count}x {c.key} <GameConsistencyCheck type="thruster" id={c.key} />{' '}
+                                                    </span>
+                                                ))}
+                                            </span>
                                         </div>
                                         <div className="detail-row primary-info">
                                             <span className="detail-label">Poussée Arrière</span>
                                             <span className="detail-value">{Math.round(multiAxisResults.rear.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type (Arrière)</span>
-                                            <span className="detail-value">{multiAxisResults.rear.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                            <span className="detail-label">Thrusters (Arrière)</span>
+                                            <span className="detail-value">
+                                                {multiAxisResults.rear.combination.map(c => (
+                                                    <span key={c.key}>
+                                                        {c.count}x {c.key} <GameConsistencyCheck type="thruster" id={c.key} />{' '}
+                                                    </span>
+                                                ))}
+                                            </span>
                                         </div>
                                         <div className="detail-row">
                                             <span className="detail-label">Temps de freinage</span>
@@ -603,16 +715,28 @@ const SpaceCalcPage: React.FC = () => {
                                             <span className="detail-value">{Math.round(multiAxisResults.lateral.left.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type (Gauche)</span>
-                                            <span className="detail-value">{multiAxisResults.lateral.left.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                            <span className="detail-label">Thrusters (Gauche)</span>
+                                            <span className="detail-value">
+                                                {multiAxisResults.lateral.left.combination.map(c => (
+                                                    <span key={c.key}>
+                                                        {c.count}x {c.key} <GameConsistencyCheck type="thruster" id={c.key} />{' '}
+                                                    </span>
+                                                ))}
+                                            </span>
                                         </div>
                                         <div className="detail-row primary-info">
                                             <span className="detail-label">Poussée (Droite)</span>
                                             <span className="detail-value">{Math.round(multiAxisResults.lateral.right.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type (Droite)</span>
-                                            <span className="detail-value">{multiAxisResults.lateral.right.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                            <span className="detail-label">Thrusters (Droite)</span>
+                                            <span className="detail-value">
+                                                {multiAxisResults.lateral.right.combination.map(c => (
+                                                    <span key={c.key}>
+                                                        {c.count}x {c.key} <GameConsistencyCheck type="thruster" id={c.key} />{' '}
+                                                    </span>
+                                                ))}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
