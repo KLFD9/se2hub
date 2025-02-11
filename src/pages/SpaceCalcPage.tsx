@@ -641,7 +641,7 @@ const SpaceCalcPage: React.FC = () => {
                         </button>
                     </form>
                 </div>
-                {results && (
+                {results && multiAxisResults && (
                     <div className="results-section">
                         <div className="summary-section">
                             <h3>Résumé de Configuration</h3>
@@ -691,140 +691,142 @@ const SpaceCalcPage: React.FC = () => {
                             </h3>
                             <div className="result-grid">
                                 <div className="axis-section vertical">
-                                    <h4>Vertical</h4>
+                                    <h4>Axe Vertical</h4>
                                     <div className="axis-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Poussée</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults!.vertical.requiredThrust).toLocaleString()} N</span>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Poussée Requise</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.vertical.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Propulseurs</span>
-                                            <span className="detail-value">{multiAxisResults!.vertical.thrusters[0].count}x {multiAxisResults!.vertical.thrusters[0].type}</span>
+                                            <span className="detail-label">Type</span>
+                                            <span className="detail-value">{multiAxisResults.vertical.thrusters[0].type}</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Vitesse max</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults!.vertical.maxSpeed)} m/s</span>
+                                            <span className="detail-label">Quantité</span>
+                                            <span className="detail-value">{multiAxisResults.vertical.thrusters[0].count}</span>
+                                        </div>
+                                        <div className="detail-row">
+                                            <span className="detail-label">Vmax</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.vertical.maxSpeed)} m/s</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="axis-section horizontal">
-                                    <h4>Avant/Arrière</h4>
+                                    <h4>Propulsion</h4>
                                     <div className="axis-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Poussée</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults!.forward.requiredThrust).toLocaleString()} N</span>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Poussée Requise</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.forward.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Propulseurs</span>
-                                            <span className="detail-value">{multiAxisResults!.forward.thrusters[0].count}x {multiAxisResults!.forward.thrusters[0].type}</span>
+                                            <span className="detail-label">Type</span>
+                                            <span className="detail-value">{multiAxisResults.forward.thrusters[0].type}</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Temps de freinage</span>
-                                            <span className="detail-value">{multiAxisResults!.backward.brakingTime.toFixed(1)} s</span>
+                                            <span className="detail-label">Quantité</span>
+                                            <span className="detail-value">{multiAxisResults.forward.thrusters[0].count}</span>
+                                        </div>
+                                        <div className="detail-row">
+                                            <span className="detail-label">Temps Freinage</span>
+                                            <span className="detail-value">{multiAxisResults.forward.brakingTime.toFixed(1)}s</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="axis-section lateral">
-                                    <h4>Latéral</h4>
+                                    <h4>Déplacement Latéral</h4>
                                     <div className="axis-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Poussée</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults!.lateral.requiredThrust).toLocaleString()} N</span>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Poussée Requise</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.lateral.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Propulseurs</span>
-                                            <span className="detail-value">{multiAxisResults!.lateral.thrusters[0].count}x {multiAxisResults!.lateral.thrusters[0].type}</span>
+                                            <span className="detail-label">Type</span>
+                                            <span className="detail-value">{multiAxisResults.lateral.thrusters[0].type}</span>
+                                        </div>
+                                        <div className="detail-row">
+                                            <span className="detail-label">Quantité</span>
+                                            <span className="detail-value">{multiAxisResults.lateral.thrusters[0].count}</span>
+                                        </div>
+                                        <div className="detail-row">
+                                            <span className="detail-label">Efficacité</span>
+                                            <span className="detail-value">{(multiAxisResults.lateral.thrusters[0].efficiency * 100).toFixed(0)}%</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="axis-section summary">
-                                    <h4>Énergie</h4>
+                                    <h4>Résumé Global</h4>
                                     <div className="axis-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Consommation Totale</span>
-                                            <span className="detail-value">{(multiAxisResults!.totalPowerConsumption / 1000000).toFixed(1)} MW</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Batteries Requises</span>
-                                            <span className="detail-value">{multiAxisResults!.optimalBatteryCount} unités</span>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Puissance Totale</span>
+                                            <span className="detail-value">{(multiAxisResults.totalPowerConsumption / 1000000).toFixed(1)} MW</span>
                                         </div>
                                         <div className="detail-row">
                                             <span className="detail-label">Masse Totale</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults!.totalMass).toLocaleString()} kg</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.totalMass).toLocaleString()} kg</span>
+                                        </div>
+                                        <div className="detail-row">
+                                            <span className="detail-label">Batteries</span>
+                                            <span className="detail-value">{multiAxisResults.optimalBatteryCount}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        {/* Section Batteries */}
                         <div className="result-card battery-requirements">
                             <h3>
                                 <span className="card-title">Besoins en Batteries</span>
                                 <span className="card-subtitle">Configuration énergétique recommandée</span>
                             </h3>
-                            <div className="result-grid">
-                                <div className="result-item battery-item">
-                                    <div className="battery-header">
-                                        <div className="result-label">Configuration Optimale</div>
-                                        <div className="battery-indicator">
-                                            <div className="battery-count">{results.batteryRequirements.optimalCount}</div>
-                                            <div className="battery-type">
-                                                {batteryConfig === 'flexible' ? 'Petites Batteries' : 'Grandes Batteries'}
-                                            </div>
-                                        </div>
+                            <div className="battery-block">
+                                <div className="battery-image-container">
+                                <img 
+                                    src={batteryConfig === 'flexible' ? batteries.smallBattery.imagefile : batteries.largeBattery.imagefile} 
+                                    alt="Battery Icon" 
+                                    className="battery-image"
+                                />
+                                </div>
+                                <div className="battery-details">
+                                <div className="battery-header">
+                                    <span className="battery-config">Configuration Optimale &amp; Sécurisée</span>
+                                    <span className="battery-units">{results.batteryRequirements.count} unités</span>
+                                </div>
+                                <div className="battery-info-grid">
+                                    <div className="info-item">
+                                        <span className="info-label">Capacité Énergétique</span>
+                                        <span className="info-value">
+                                            {(results.batteryRequirements.totalStorage * 1000).toLocaleString()} kWh
+                                        </span>
                                     </div>
-                                    <div className="battery-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Puissance Totale</span>
-                                            <span className="detail-value">{(results.batteryRequirements.totalStorage * 1000).toLocaleString()} kWh</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Masse</span>
-                                            <span className="detail-value">{results.batteryRequirements.totalWeight.toLocaleString()} kg</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Volume</span>
-                                            <span className="detail-value">{results.batteryRequirements.totalVolume.toLocaleString()} m³</span>
-                                        </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Masse du Système</span>
+                                        <span className="info-value">{results.batteryRequirements.totalWeight.toLocaleString()} kg</span>
                                     </div>
-                                    <div className="battery-efficiency-bar">
-                                        <div className="efficiency-fill" style={{ width: '100%' }}>
-                                            <span className="efficiency-label">Configuration de Base</span>
-                                        </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Volume Requis</span>
+                                        <span className="info-value">{results.batteryRequirements.totalVolume.toLocaleString()} m³</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Autonomie</span>
+                                        <span className="info-value">{Math.round(results.batteryRequirements.flightTime * 60)} min</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Recharge</span>
+                                        <span className="info-value">{results.batteryRequirements.rechargeTime} min</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Redondance</span>
+                                        <span className="info-value">
+                                         +{((results.batteryRequirements.count / results.batteryRequirements.optimalCount - 1) * 100).toFixed(0)}%
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="result-item battery-item">
-                                    <div className="battery-header">
-                                        <div className="result-label">Configuration Recommandée</div>
-                                        <div className="battery-indicator">
-                                            <div className="battery-count">{results.batteryRequirements.count}</div>
-                                            <div className="battery-type">+20% Redondance</div>
-                                        </div>
-                                    </div>
-                                    <div className="battery-details">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Temps de Vol</span>
-                                            <span className="detail-value">{Math.round(results.batteryRequirements.flightTime * 60)} min</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Temps de Recharge</span>
-                                            <span className="detail-value">{results.batteryRequirements.rechargeTime} min</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Surplus de Puissance</span>
-                                            <span className="detail-value">
-                                                +{((results.batteryRequirements.count / results.batteryRequirements.optimalCount - 1) * 100).toFixed(0)}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="battery-efficiency-bar">
-                                        <div className="efficiency-fill safety" style={{ width: '120%' }}>
-                                            <span className="efficiency-label">Configuration Sécurisée</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+
+
+                </div>
                 )}
             </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BiMenu, BiNews, BiHome, BiImage, BiGroup, BiCube, BiVideo } from 'react-icons/bi'
+import { BiMenu, BiNews, BiHome, BiImage, BiGroup, BiCube, BiVideo, BiSolidWrench } from 'react-icons/bi'
 import { Link, useLocation } from 'react-router-dom'
 import '../styles/components/Navbar.css'
 
@@ -22,7 +22,7 @@ export const Navbar = () => {
     { label: 'Accueil', path: '/', icon: BiHome },
     { label: 'Galerie', path: '/gallery', icon: BiImage },
     { label: 'Spaceflix', path: '/spaceflix', icon: BiVideo },
-    { label: 'Actualités', path: '/news', icon: BiNews },
+    { label: 'Outils', path: '/tools', icon: BiSolidWrench },
     { label: 'Communauté', path: '/community', icon: BiGroup }
   ]
 

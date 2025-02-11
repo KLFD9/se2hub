@@ -36,6 +36,7 @@ export interface BatteryData {
     weight: number; // kg
     rechargeTime: number; // minutes
     volume: number; // m³
+    imagefile: string;
 }
 
 export interface OreData {
@@ -84,7 +85,7 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 72
     },
     smallIon: {
-        name: "Ion Thruster",
+        name: "Small Ion Thruster",
         weight: 121,
         thrust: 14400,
         power: 200000,
@@ -111,7 +112,7 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 800
     },
     smallHydrogen: {
-        name: "Hydrogen Thruster",
+        name: "Small Hydrogen Thruster",
         weight: 334,
         thrust: 98400,
         power: 125,
@@ -141,7 +142,7 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 240
     },
     smallAtmospheric: {
-        name: "Atmospheric Thruster",
+        name: "Small Atmospheric Thruster",
         weight: 699,
         thrust: 96000,
         power: 600000,
@@ -171,7 +172,7 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 129
     },
     smallIon: {
-        name: "Ion Thruster",
+        name: "Small Ion Thruster",
         weight: 4380,
         thrust: 345600,
         power: 3360000,
@@ -198,7 +199,7 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 960
     },
     smallHydrogen: {
-        name: "Hydrogen Thruster",
+        name: "Small Hydrogen Thruster",
         weight: 1420,
         thrust: 1080000,
         power: 1250,
@@ -228,7 +229,7 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         powerToThrustRatio: 386
     },
     smallAtmospheric: {
-        name: "Atmospheric Thruster",
+        name: "Small Atmospheric Thruster",
         weight: 4000,
         thrust: 648000,
         power: 2400000,
@@ -305,7 +306,8 @@ export const batteries: Record<string, BatteryData> = {
         maxOutput: 0.2, // MW
         weight: 146.4,
         rechargeTime: 30,
-        volume: 0.125
+        volume: 0.125,
+        imagefile:'/assets/blocks/battery/Icon_Block_Small_Battery.webp'
     },
     largeBattery: {
         name: "Grande Batterie",
@@ -313,7 +315,8 @@ export const batteries: Record<string, BatteryData> = {
         maxOutput: 4.0, // MW
         weight: 1040.4,
         rechargeTime: 30,
-        volume: 2.25
+        volume: 2.25,
+        imagefile:'/assets/blocks/battery/Icon_Block_Big_Battery.webp'
     }
 };
 

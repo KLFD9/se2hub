@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaGithub, FaRocket, FaCode, FaStar, FaQuestion, FaBook, FaDiscord } from 'react-icons/fa';
+import { FaGithub, FaQuestion, FaDiscord } from 'react-icons/fa';
 import { BiChevronRight, BiGitBranch } from 'react-icons/bi';
 import '../styles/pages/Tools.css';
 
@@ -19,7 +19,7 @@ interface ToolCard {
 const tools: ToolCard[] = [
     {
         title: "SpaceCalc",
-        description: "Calculateur avancé de poussée et de consommation pour vaisseaux spatiaux",
+        description: "Calculateur de propulseurs et énergie pour vos vaisseaux",
         path: "/tools/spacecalc",
         icon: "🚀",
         tags: ["Calculatrice", "Propulseurs"],
@@ -68,7 +68,7 @@ const ToolsPage: React.FC = () => {
                                 href="https://github.com/engineers-hub" 
                                 className="tools-cta"
                                 target="_blank"
-                                rel="noopener noreferrer"
+                                rel="noopener noreferrer"   
                             >
                                 <FaGithub /> Contribuer sur GitHub
                             </a>
