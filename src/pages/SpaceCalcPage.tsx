@@ -14,7 +14,6 @@ import {
 import '../styles/pages/SpaceCalc.css';
 
 type VehicleType = 'atmospheric' | 'interplanetary';
-type BatteryConfig = 'compact' | 'flexible';
 
 interface ContainerConfig {
     small: number;
@@ -25,17 +24,6 @@ interface ContainerConfig {
 
 interface CalculationResults {
     requiredThrust: number;
-    recommendedThrusters: {
-        type: string;
-        count: number;
-        totalWeight: number;
-        totalPower: number;
-        totalFuel: number | null;
-        effectiveThrust: number;
-        efficiency: number;
-        flightTime: number;
-        speedMS: number;
-    }[];
     containerStats: {
         totalMass: number;
         totalVolume: number;
@@ -46,6 +34,7 @@ interface CalculationResults {
     batteryRequirements: {
         count: number;
         optimalCount: number;
+        combination: { large: number; small: number };
         totalWeight: number;
         totalVolume: number;
         totalStorage: number;
@@ -77,21 +66,16 @@ interface ContainerStats {
 interface AxisConfiguration {
     direction: string;
     requiredThrust: number;
-    thrusters: {
-        type: string;
-        count: number;
-        totalPower: number;
-        efficiency: number;
-    }[];
+    combination: { key: string; count: number }[];
     brakingTime: number;
     maxSpeed: number;
 }
 
 interface MultiAxisResults {
     vertical: AxisConfiguration;
-    forward: AxisConfiguration;
-    backward: AxisConfiguration;
-    lateral: AxisConfiguration;
+    front: AxisConfiguration;
+    rear: AxisConfiguration;
+    lateral: { left: AxisConfiguration; right: AxisConfiguration };
     totalPowerConsumption: number;
     totalMass: number;
     optimalBatteryCount: number;
@@ -110,7 +94,6 @@ interface ExportData {
         vehicleType: VehicleType;
         naturalMassRatio: number;
         safetyMargin: number;
-        batteryConfig: BatteryConfig;
     };
     containerStats: ContainerStats;
     thrusterResults: CalculationResults | null;
@@ -120,21 +103,70 @@ interface ExportData {
 }
 
 const CURRENT_VERSION = '1.0.0';
-const DISTANCE = 100; // Distance de référence pour le calcul de la vitesse
+const DISTANCE = 100; // en mètres
+
+// Sélection d'une combinaison de thrusters pour fournir une poussée R donnée
+const selectThrusterCombination = (
+    available: { key: string; thruster: ThrusterData }[],
+    R: number,
+    atmosphereValue: number
+): { combination: { key: string; count: number }[] } => {
+    // Si un thruster seul fournit suffisamment, le choisir
+    const suitable = available.filter(a => (a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue)) >= R);
+    if (suitable.length > 0) {
+        const best = suitable.sort((a, b) =>
+            Math.abs(a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue) - R) -
+            Math.abs(b.thruster.thrust * calculateThrusterEfficiency(b.thruster, atmosphereValue) - R)
+        )[0];
+        return { combination: [{ key: best.key, count: 1 }] };
+    }
+    // Sinon, tenter de combiner un thruster large et compléter avec un small
+    const large = available.filter(a => a.key.toLowerCase().includes('large'));
+    const small = available.filter(a => a.key.toLowerCase().includes('small'));
+    if (large.length > 0) {
+        const chosenLarge = large.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
+        const effLarge = chosenLarge.thruster.thrust * calculateThrusterEfficiency(chosenLarge.thruster, atmosphereValue);
+        if (effLarge >= R * 0.7) {
+            const remainder = R - effLarge;
+            const combo = [{ key: chosenLarge.key, count: 1 }];
+            if (remainder > 0 && small.length > 0) {
+                const chosenSmall = small.sort((a, b) => b.thruster.thrust - a.thruster.thrust)[0];
+                const effSmall = chosenSmall.thruster.thrust * calculateThrusterEfficiency(chosenSmall.thruster, atmosphereValue);
+                const countSmall = Math.ceil(remainder / effSmall);
+                combo.push({ key: chosenSmall.key, count: countSmall });
+            }
+            return { combination: combo };
+        }
+    }
+    // Sinon, choisir le meilleur global
+    const best = available.sort(
+        (a, b) => (b.thruster.thrust * calculateThrusterEfficiency(b.thruster, atmosphereValue)) -
+                  (a.thruster.thrust * calculateThrusterEfficiency(a.thruster, atmosphereValue))
+    )[0];
+    const effBest = best.thruster.thrust * calculateThrusterEfficiency(best.thruster, atmosphereValue);
+    const countBest = Math.ceil(R / effBest);
+    return { combination: [{ key: best.key, count: countBest }] };
+};
+
+const calculateThrusterEfficiency = (thruster: ThrusterData, atmosphereLevel: number): number => {
+    if (thruster.name.includes("Atmospheric")) {
+        return Math.min(atmosphereLevel, 1);
+    }
+    if (thruster.name.includes("Ion")) {
+        return atmosphereLevel > 0 ? 0.3 : 1; // 30% en atmosphère
+    }
+    return 1;
+};
 
 const SpaceCalcPage: React.FC = () => {
-    // Paramètres de base
     const [shipSize, setShipSize] = useState<'small' | 'large'>('small');
-    const [weight, setWeight] = useState<string>(''); // Masse de base sans conteneurs
+    const [weight, setWeight] = useState<string>(''); // Masse de base
     const [gravity, setGravity] = useState<string>('earth');
     const [atmosphere, setAtmosphere] = useState<string>('normal');
     const [multiplier, setMultiplier] = useState<string>('realistic');
     const [vehicleType, setVehicleType] = useState<VehicleType>('atmospheric');
-    // Nouveau paramètre pour la proportion de masse naturelle (100 = 100 % de la masse est soumise à la gravité naturelle)
     const [naturalMassRatio, setNaturalMassRatio] = useState<number>(100);
-    // Nouveau paramètre de marge de sécurité (en % ; par défaut 120%)
     const [safetyMargin, setSafetyMargin] = useState<number>(120);
-    const [batteryConfig, setBatteryConfig] = useState<BatteryConfig>(shipSize === 'small' ? 'flexible' : 'compact');
     const [containers, setContainers] = useState<ContainerConfig>({
         small: 0,
         medium: 0,
@@ -153,35 +185,9 @@ const SpaceCalcPage: React.FC = () => {
     const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
     const [theme] = useState<'retro' | 'modern'>('retro');
 
-    // Gestion des configurations enregistrées
-    const loadConfig = (config: SavedConfig): void => {
-        setShipSize(config.shipSize);
-        setWeight(config.weight);
-        setGravity(config.gravity);
-        setAtmosphere(config.atmosphere);
-        setMultiplier(config.multiplier);
-        setVehicleType(config.thrusterType === 'atmospheric' ? 'atmospheric' : 'interplanetary');
-        setBatteryConfig(config.batteryType === 'compact' ? 'compact' : 'flexible');
-    };
-
-    const deleteConfig = (id: string): void => {
-        const updatedConfigs = savedConfigs.filter(config => config.id !== id);
-        setSavedConfigs(updatedConfigs);
-        localStorage.setItem('spacecalc-configs', JSON.stringify(updatedConfigs));
-    };
-
-    const updateContainer = (type: keyof ContainerConfig, value: number | boolean): void => {
-        setContainers(prev => ({
-            ...prev,
-            [type]: typeof value === 'number' ? Math.max(0, value) : value
-        }));
-    };
-
     useEffect(() => {
-        const savedConfigsStr = localStorage.getItem('spacecalc-configs');
-        if (savedConfigsStr) {
-            setSavedConfigs(JSON.parse(savedConfigsStr));
-        }
+        const saved = localStorage.getItem('spacecalc-configs');
+        if (saved) setSavedConfigs(JSON.parse(saved));
     }, []);
 
     useEffect(() => {
@@ -189,11 +195,28 @@ const SpaceCalcPage: React.FC = () => {
         setContainerStats(stats);
     }, [containers, shipSize]);
 
+    const loadConfig = (config: SavedConfig): void => {
+        setShipSize(config.shipSize);
+        setWeight(config.weight);
+        setGravity(config.gravity);
+        setAtmosphere(config.atmosphere);
+        setMultiplier(config.multiplier);
+        setVehicleType(config.thrusterType === 'atmospheric' ? 'atmospheric' : 'interplanetary');
+    };
+
+    const deleteConfig = (id: string): void => {
+        const updated = savedConfigs.filter(c => c.id !== id);
+        setSavedConfigs(updated);
+        localStorage.setItem('spacecalc-configs', JSON.stringify(updated));
+    };
+
+    const updateContainer = (type: keyof ContainerConfig, value: number | boolean): void => {
+        setContainers(prev => ({ ...prev, [type]: typeof value === 'number' ? Math.max(0, value) : value }));
+    };
+
     const calculateContainerStats = (): ContainerStats => {
         const cargoData = shipSize === 'small' ? smallShipCargo : largeShipCargo;
-        let totalVolume = 0;
-        let emptyMass = 0;
-        let maxCapacity = 0;
+        let totalVolume = 0, emptyMass = 0, maxCapacity = 0;
         Object.entries(containers).forEach(([size, value]) => {
             if (size !== 'isFilled' && cargoData[size]) {
                 const count = Number(value);
@@ -203,13 +226,15 @@ const SpaceCalcPage: React.FC = () => {
             }
         });
         const totalMass = containers.isFilled ? emptyMass + (totalVolume * ores.iron.mass) : emptyMass;
-        return { 
-            totalMass, 
-            totalVolume,
-            emptyMass,
-            maxCapacity,
-            fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides'
-        };
+        return { totalMass, totalVolume, emptyMass, maxCapacity, fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides' };
+    };
+
+    // Calcul de la combinaison de thrusters pour un axe donné
+    const calculateAxisCombination = (R: number, atmosphereValue: number): { combination: { key: string; count: number }[] } => {
+        const available = Object.entries(shipSize === 'small' ? smallShipThrusters : largeShipThrusters)
+            .filter(([_, thruster]) => thruster.name.toLowerCase().includes(vehicleType === 'atmospheric' ? "atmospheric" : "hydrogen"))
+            .map(([key, thruster]) => ({ key, thruster }));
+        return selectThrusterCombination(available, R, atmosphereValue);
     };
 
     const calculateThrusters = (e: React.FormEvent): void => {
@@ -221,174 +246,110 @@ const SpaceCalcPage: React.FC = () => {
         const gravityValue = gravityOptions[gravity];
         const atmosphereValue = atmosphereOptions[atmosphere];
         const multiplierValue = containerMultiplierOptions[multiplier];
-        // On applique la marge de sécurité sur la poussée requise
         const effectiveMass = totalWeight * (naturalMassRatio / 100);
         const requiredThrust = effectiveMass * 9.81 * gravityValue * (safetyMargin / 100) / multiplierValue;
         
-        const multiAxis = calculateMultiAxisConfiguration(totalWeight, gravity, atmosphereValue);
-        setMultiAxisResults(multiAxis);
+        // Calcul des axes
+        const verticalThrust = totalWeight * 9.81 * gravityValue * 1.5;
+        const verticalCombo = calculateAxisCombination(verticalThrust, atmosphereValue);
+        const horizontalThrustTotal = totalWeight * 9.81 * gravityValue * 0.75;
+        const frontCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosphereValue);
+        const rearCombo = calculateAxisCombination(horizontalThrustTotal / 2, atmosphereValue);
+        const lateralThrustTotal = totalWeight * 9.81 * gravityValue * 0.5;
+        const leftCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosphereValue);
+        const rightCombo = calculateAxisCombination(lateralThrustTotal / 2, atmosphereValue);
 
-        // Sélection automatique des propulseurs en fonction du type de véhicule
-        const effectiveThrusterType = vehicleType === 'atmospheric' ? "atmospheric" : "hydrogen";
-        const thrusters = shipSize === 'small' ? smallShipThrusters : largeShipThrusters;
-        const filteredThrusters = Object.fromEntries(
-            Object.entries(thrusters).filter(([_, thruster]) => 
-                thruster.name.toLowerCase().includes(effectiveThrusterType)
-            )
-        );
+        // Calcul de la puissance consommée par les thrusters (en W)
+        const getPower = (combo: { combination: { key: string; count: number }[] }): number => {
+            let power = 0;
+            const thrustersObj = shipSize === 'small' ? smallShipThrusters : largeShipThrusters;
+            combo.combination.forEach(c => {
+                const t = thrustersObj[c.key];
+                if (t) power += c.count * t.power;
+            });
+            return power;
+        };
+        const totalPowerConsumed = getPower(verticalCombo) + getPower(frontCombo) + getPower(rearCombo) + getPower(leftCombo) + getPower(rightCombo);
 
-        const recommendedThrusters = Object.entries(filteredThrusters).map(([_, thruster]) => {
-            const effectiveThrust = calculateEffectiveThrust(thruster, atmosphereValue);
-            if (effectiveThrust <= 0) return null;
-            const count = Math.ceil(requiredThrust / effectiveThrust);
-            const efficiency = calculateThrusterEfficiency(thruster, atmosphereValue);
-            const totalThrust = effectiveThrust * count;
-            const acceleration = (totalThrust / totalWeight) - (9.81 * gravityValue);
-            const speedMS = acceleration > 0 ? Math.sqrt(2 * acceleration * DISTANCE) : 0;
-            const flightTime = acceleration > 0 ? Math.sqrt((2 * DISTANCE) / acceleration) : 0;
-            return {
-                type: thruster.name,
-                count,
-                totalWeight: count * thruster.weight,
-                totalPower: count * thruster.power,
-                totalFuel: thruster.fuel ? count * thruster.fuel : null,
-                effectiveThrust: totalThrust,
-                efficiency,
-                speedMS,
-                flightTime
-            };
-        }).filter(thruster => thruster !== null) as CalculationResults["recommendedThrusters"];
-
-        if (recommendedThrusters.length === 0) {
-            setResults(null);
-            return;
-        }
-
-        // Calcul des batteries
-        const battery = batteryConfig === 'flexible'
-            ? batteries.smallBattery
-            : batteries.largeBattery;
-        const totalPower = recommendedThrusters.reduce((acc, curr) => acc + curr.totalPower, 0);
-        // On applique la marge de sécurité sur l'énergie aussi :
-        const optimalBatteryCount = Math.ceil((totalPower / 1000000) / battery.maxOutput);
-        const recommendedBatteryCount = Math.ceil(optimalBatteryCount * (safetyMargin / 100));
-        const totalStorage = recommendedBatteryCount * battery.maxStoredPower;
-        const batteryFlightTime = (totalPower / 1000000) > 0 ? totalStorage / (totalPower / 1000000) : 0;
+        // Calcul des batteries : on détermine d'abord le nombre minimum requis selon la puissance et selon l'énergie
+        const powerBasedCount = Math.ceil(totalPowerConsumed / (batteries.largeBattery.maxOutput * 1e6));
+        const energyBasedCount = Math.ceil((totalPowerConsumed / 1e6) / batteries.largeBattery.maxStoredPower);
+        const optimalBatteryCount = Math.max(powerBasedCount, energyBasedCount);
+        const finalBatteryCount = Math.ceil(optimalBatteryCount * (safetyMargin / 100)); // appliquer safetyMargin
+        const combinedStorage = optimalBatteryCount * batteries.largeBattery.maxStoredPower;
+        const combinedWeight = optimalBatteryCount * batteries.largeBattery.weight;
+        const combinedVolume = optimalBatteryCount * batteries.largeBattery.volume;
+        const batteryFlightTime = (totalPowerConsumed / 1e6) > 0 ? combinedStorage / (totalPowerConsumed / 1e6) : 0;
         const batteryReqs = {
-            count: recommendedBatteryCount,
+            count: finalBatteryCount,
             optimalCount: optimalBatteryCount,
-            totalWeight: recommendedBatteryCount * battery.weight,
-            totalVolume: recommendedBatteryCount * battery.volume,
-            totalStorage,
-            rechargeTime: battery.rechargeTime,
+            combination: { large: optimalBatteryCount, small: 0 },
+            totalWeight: combinedWeight,
+            totalVolume: combinedVolume,
+            totalStorage: combinedStorage,
+            rechargeTime: batteries.largeBattery.rechargeTime,
             flightTime: batteryFlightTime
         };
 
-        setResults({
+        const calcResults: CalculationResults = {
             requiredThrust,
-            recommendedThrusters,
             containerStats: stats,
             batteryRequirements: batteryReqs
-        });
-    };
-
-    const calculateThrusterEfficiency = (thruster: ThrusterData, atmosphereLevel: number): number => {
-        if (thruster.name.toLowerCase().includes('atmospheric')) {
-            if (atmosphereLevel === 0) return 0;
-            return Math.min(atmosphereLevel, 1);
-        }
-        if (thruster.name.toLowerCase().includes('hydrogen')) {
-            return thruster.atmosphere 
-                ? thruster.atmosphere.minEfficiency + (thruster.atmosphere.maxEfficiency - thruster.atmosphere.minEfficiency) * (1 - atmosphereLevel)
-                : thruster.spaceEfficiency;
-        }
-        if (thruster.name.toLowerCase().includes('ion')) {
-            return atmosphereLevel === 0 ? 1 : 0.8;
-        }
-        return thruster.spaceEfficiency;
-    };
-
-    const calculateEffectiveThrust = (thruster: ThrusterData, atmosphereLevel: number): number => {
-        const efficiency = calculateThrusterEfficiency(thruster, atmosphereLevel);
-        if (efficiency <= 0) return 0;
-        return thruster.thrust * efficiency;
-    };
-
-    // On retire le paramètre 'atmosphere' pour éliminer l'avertissement
-    const calculateMultiAxisConfiguration = (baseWeight: number, gravity: string, atmosphereValue: number): MultiAxisResults => {
-        const gravityValue = gravityOptions[gravity];
-        const totalWeight = baseWeight;
-        const verticalThrust = totalWeight * 9.81 * gravityValue * 1.5;
-        const forwardThrust = verticalThrust * 0.75;
-        const backwardThrust = forwardThrust;
-        const lateralThrust = verticalThrust * 0.5;
-        const vertical = calculateAxisThrusters(verticalThrust, atmosphereValue, 'vertical', totalWeight);
-        const forward = calculateAxisThrusters(forwardThrust, atmosphereValue, 'forward', totalWeight);
-        const backward = calculateAxisThrusters(backwardThrust, atmosphereValue, 'backward', totalWeight);
-        const lateral = calculateAxisThrusters(lateralThrust, atmosphereValue, 'lateral', totalWeight);
-        const totalPower = vertical.thrusters.reduce((acc, t) => acc + t.totalPower, 0) +
-                           forward.thrusters.reduce((acc, t) => acc + t.totalPower, 0) +
-                           backward.thrusters.reduce((acc, t) => acc + t.totalPower, 0) +
-                           lateral.thrusters.reduce((acc, t) => acc + t.totalPower, 0);
-        return {
-            vertical,
-            forward,
-            backward,
-            lateral,
-            totalPowerConsumption: totalPower,
-            totalMass: baseWeight,
-            optimalBatteryCount: Math.ceil(totalPower / (batteries.largeBattery.maxOutput * 1000000))
         };
-    };
+        setResults(calcResults);
 
-    const calculateAxisThrusters = (requiredThrust: number, atmosphereValue: number, axis: string, totalWeight: number): AxisConfiguration => {
-        const thrusters = Object.entries(shipSize === 'small' ? smallShipThrusters : largeShipThrusters)
-            .map(([_, thruster]) => {
-                const efficiency = calculateThrusterEfficiency(thruster, atmosphereValue);
-                const effectiveThrust = thruster.thrust * efficiency;
-                const count = Math.ceil(requiredThrust / effectiveThrust);
-                return {
-                    type: thruster.name,
-                    count,
-                    totalPower: count * thruster.power,
-                    efficiency
-                };
-            })
-            .filter(t => t.efficiency > 0)
-            .sort((a, b) => a.totalPower - b.totalPower);
-        const bestThruster = thrusters[0];
-        const a = requiredThrust / totalWeight;
-        const maxSpeed = Math.sqrt(2 * a * DISTANCE);
-        const brakingTime = a > 0 ? maxSpeed / a : 0;
-        return {
-            direction: axis,
-            requiredThrust,
-            thrusters: [bestThruster],
-            brakingTime,
-            maxSpeed
+        // Calcul multi-axes
+        const calcAxis = (R: number, axis: string): AxisConfiguration => {
+            const combo = calculateAxisCombination(R, atmosphereValue);
+            const maxSpeed = totalWeight > 0 ? Math.sqrt(2 * (R / totalWeight) * DISTANCE) : 0;
+            const brakingTime = totalWeight > 0 ? maxSpeed / (R / totalWeight) : 0;
+            return {
+                direction: axis,
+                requiredThrust: R,
+                combination: combo.combination,
+                brakingTime,
+                maxSpeed
+            };
         };
+
+        const verticalAxis: AxisConfiguration = calcAxis(verticalThrust, 'vertical');
+        const frontAxis: AxisConfiguration = calcAxis(horizontalThrustTotal / 2, 'front');
+        const rearAxis: AxisConfiguration = calcAxis(horizontalThrustTotal / 2, 'rear');
+        const leftAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'left');
+        const rightAxis: AxisConfiguration = calcAxis(lateralThrustTotal / 2, 'right');
+
+        const getAxisPower = (axis: AxisConfiguration): number => {
+            const thrustersObj = shipSize === 'small' ? smallShipThrusters : largeShipThrusters;
+            return axis.combination.reduce((acc, c) => {
+                const t = thrustersObj[c.key];
+                return t ? acc + c.count * t.power : acc;
+            }, 0);
+        };
+
+        const totalAxisPower = getAxisPower(verticalAxis) + getAxisPower(frontAxis) + getAxisPower(rearAxis) + getAxisPower(leftAxis) + getAxisPower(rightAxis);
+        const multiAxis: MultiAxisResults = {
+            vertical: verticalAxis,
+            front: frontAxis,
+            rear: rearAxis,
+            lateral: { left: leftAxis, right: rightAxis },
+            totalPowerConsumption: totalAxisPower,
+            totalMass: totalWeight,
+            optimalBatteryCount: finalBatteryCount
+        };
+        setMultiAxisResults(multiAxis);
     };
 
-    // Résumé synthétique enrichi avec détails par axe et comparaison entre configurations de batterie
     const generateSummary = (): string => {
         if (!results || !multiAxisResults) return "";
         const totalShipMass = Math.round((parseFloat(weight) || 0) + containerStats.totalMass);
         let summary = `Pour un vaisseau de ${totalShipMass.toLocaleString()} kg (${vehicleType === 'atmospheric' ? "Atmosphérique" : "Interplanétaire"}):\n`;
-        summary += `• Poussée Totale Requise: ${Math.round(results.requiredThrust).toLocaleString()} N\n`;
-        summary += `• Vertical: ${multiAxisResults.vertical.thrusters[0].count}x ${multiAxisResults.vertical.thrusters[0].type} (Vmax ${Math.round(multiAxisResults.vertical.maxSpeed)} m/s)\n`;
-        summary += `• Avant/Arrière: ${multiAxisResults.forward.thrusters[0].count}x ${multiAxisResults.forward.thrusters[0].type} (Freinage ${multiAxisResults.backward.brakingTime.toFixed(1)} s)\n`;
-        summary += `• Latéral: ${multiAxisResults.lateral.thrusters[0].count}x ${multiAxisResults.lateral.thrusters[0].type}\n`;
-        summary += `• Énergie Requise: ${results.batteryRequirements.count} `;
-        summary += batteryConfig === 'flexible' ? "petites" : "grandes";
-        summary += ` batteries (capacité totale ${results.batteryRequirements.totalStorage.toFixed(1)} MWh)\n`;
-        if (batteryConfig === 'flexible') {
-            // Comparaison : 20 petites batteries ≈ 1 grande batterie
-            const totalSmallWeight = results.batteryRequirements.count * batteries.smallBattery.weight;
-            summary += `(Note : 20 petites batteries fournissent environ la même capacité qu’1 grande batterie, mais pèsent environ ${totalSmallWeight.toLocaleString()} kg au total, contre ${batteries.largeBattery.weight} kg par grande batterie.)`;
-        } else {
-            // Pour configuration compacte, on peut indiquer le gain de masse
-            summary += `(Note : Les grandes batteries offrent une configuration compacte et un poids réduit par capacité.)`;
-        }
+        summary += `• Poussée Totale Requise : ${Math.round(results.requiredThrust).toLocaleString()} N\n\n`;
+        summary += `— Axe Vertical : ${multiAxisResults.vertical.combination.map(c => `${c.count}x ${c.key}`).join(" + ")} (Vmax ${Math.round(multiAxisResults.vertical.maxSpeed)} m/s)\n`;
+        summary += `— Propulsion Avant : ${multiAxisResults.front.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}\n`;
+        summary += `— Propulsion Arrière : ${multiAxisResults.rear.combination.map(c => `${c.count}x ${c.key}`).join(" + ")} (Freinage ${multiAxisResults.rear.brakingTime.toFixed(1)} s)\n`;
+        summary += `— Déplacement Latéral : Gauche: ${multiAxisResults.lateral.left.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}, Droite: ${multiAxisResults.lateral.right.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}\n\n`;
+        summary += `• Énergie Requise : ${results.batteryRequirements.count} batteries\n`;
+        summary += `   (Soit ${results.batteryRequirements.combination.large} grandes + ${results.batteryRequirements.combination.small} petites, totalisant ${results.batteryRequirements.totalStorage.toFixed(2)} MWh)\n`;
         return summary;
     };
 
@@ -405,8 +366,7 @@ const SpaceCalcPage: React.FC = () => {
                 multiplierValue: containerMultiplierOptions[multiplier],
                 vehicleType,
                 naturalMassRatio,
-                safetyMargin,
-                batteryConfig
+                safetyMargin
             },
             containerStats,
             thrusterResults: results,
@@ -417,13 +377,13 @@ const SpaceCalcPage: React.FC = () => {
 
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `spacecalc-results-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
+        const aElem = document.createElement('a');
+        aElem.href = url;
+        aElem.download = `spacecalc-results-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(aElem);
+        aElem.click();
         window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        document.body.removeChild(aElem);
     };
 
     return (
@@ -431,19 +391,9 @@ const SpaceCalcPage: React.FC = () => {
             {savedConfigs.length > 0 && (
                 <div className="preset-configs">
                     {savedConfigs.map(config => (
-                        <button
-                            key={config.id}
-                            className="preset-btn"
-                            onClick={() => loadConfig(config)}
-                        >
+                        <button key={config.id} className="preset-btn" onClick={() => loadConfig(config)}>
                             {config.name}
-                            <span 
-                                className="delete-config"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteConfig(config.id);
-                                }}
-                            >
+                            <span className="delete-config" onClick={(e) => { e.stopPropagation(); deleteConfig(config.id); }}>
                                 ×
                             </span>
                         </button>
@@ -454,110 +404,45 @@ const SpaceCalcPage: React.FC = () => {
                 <div className="config-section">
                     <form onSubmit={calculateThrusters}>
                         <div className="grid-type-selector">
-                            <button
-                                type="button"
-                                className={`grid-type-btn ${shipSize === 'small' ? 'active' : ''}`}
-                                onClick={() => setShipSize('small')}
-                            >
+                            <button type="button" className={`grid-type-btn ${shipSize === 'small' ? 'active' : ''}`} onClick={() => setShipSize('small')}>
                                 Petite Grille
                             </button>
-                            <button
-                                type="button"
-                                className={`grid-type-btn ${shipSize === 'large' ? 'active' : ''}`}
-                                onClick={() => setShipSize('large')}
-                            >
+                            <button type="button" className={`grid-type-btn ${shipSize === 'large' ? 'active' : ''}`} onClick={() => setShipSize('large')}>
                                 Grande Grille
                             </button>
                         </div>
                         <div className="input-group">
                             <label htmlFor="weight">Masse de Base (kg)</label>
-                            <input
-                                type="number"
-                                id="weight"
-                                value={weight}
-                                onChange={(e) => setWeight(e.target.value)}
-                                placeholder="Masse sans conteneurs"
-                                required
-                            />
+                            <input type="number" id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Masse sans conteneurs" required />
                         </div>
                         <div className="input-group">
                             <label htmlFor="naturalMassRatio">Masse Naturelle (%)</label>
-                            <input
-                                type="number"
-                                id="naturalMassRatio"
-                                value={naturalMassRatio}
-                                onChange={(e) => setNaturalMassRatio(parseFloat(e.target.value) || 100)}
-                                placeholder="100"
-                                required
-                            />
+                            <input type="number" id="naturalMassRatio" value={naturalMassRatio} onChange={(e) => setNaturalMassRatio(parseFloat(e.target.value) || 100)} placeholder="100" required />
                         </div>
                         <div className="input-group">
                             <label htmlFor="safetyMargin">Safety Margin (%)</label>
-                            <input
-                                type="number"
-                                id="safetyMargin"
-                                value={safetyMargin}
-                                onChange={(e) => setSafetyMargin(parseFloat(e.target.value) || 120)}
-                                placeholder="120"
-                                required
-                            />
-                        </div>
-                        <div className="input-group">
-                            <label htmlFor="batteryConfig">Configuration Batterie</label>
-                            <select
-                                id="batteryConfig"
-                                value={batteryConfig}
-                                onChange={(e) => setBatteryConfig(e.target.value as BatteryConfig)}
-                            >
-                                <option value="compact">Compact (Grandes Batteries)</option>
-                                <option value="flexible">Flexible (Petites Batteries)</option>
-                            </select>
+                            <input type="number" id="safetyMargin" value={safetyMargin} onChange={(e) => setSafetyMargin(parseFloat(e.target.value) || 120)} placeholder="120" required />
                         </div>
                         <div className="container-config">
                             <h3>Configuration des Conteneurs</h3>
                             <div className="container-inputs">
                                 <div className="container-input">
-                                    <label className="tooltip" data-tooltip="Volume: 125L, Masse: 49.2kg">
-                                        Petits Conteneurs
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={containers.small}
-                                        onChange={(e) => updateContainer('small', parseInt(e.target.value) || 0)}
-                                        min="0"
-                                    />
+                                    <label className="tooltip" data-tooltip="Volume: 125L, Masse: 49.2kg">Petits Conteneurs</label>
+                                    <input type="number" value={containers.small} onChange={(e) => updateContainer('small', parseInt(e.target.value) || 0)} min="0" />
                                 </div>
                                 {shipSize === 'small' && (
                                     <div className="container-input">
-                                        <label className="tooltip" data-tooltip="Volume: 3,375L, Masse: 274.8kg">
-                                            Conteneurs Moyens
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={containers.medium}
-                                            onChange={(e) => updateContainer('medium', parseInt(e.target.value) || 0)}
-                                            min="0"
-                                        />
+                                        <label className="tooltip" data-tooltip="Volume: 3,375L, Masse: 274.8kg">Conteneurs Moyens</label>
+                                        <input type="number" value={containers.medium} onChange={(e) => updateContainer('medium', parseInt(e.target.value) || 0)} min="0" />
                                     </div>
                                 )}
                                 <div className="container-input">
-                                    <label className="tooltip" data-tooltip="Volume: 15,625L, Masse: 626.2kg">
-                                        Grands Conteneurs
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={containers.large}
-                                        onChange={(e) => updateContainer('large', parseInt(e.target.value) || 0)}
-                                        min="0"
-                                    />
+                                    <label className="tooltip" data-tooltip="Volume: 15,625L, Masse: 626.2kg">Grands Conteneurs</label>
+                                    <input type="number" value={containers.large} onChange={(e) => updateContainer('large', parseInt(e.target.value) || 0)} min="0" />
                                 </div>
                                 <div className="container-checkbox">
                                     <label>
-                                        <input
-                                            type="checkbox"
-                                            checked={containers.isFilled}
-                                            onChange={(e) => updateContainer('isFilled', e.target.checked)}
-                                        />
+                                        <input type="checkbox" checked={containers.isFilled} onChange={(e) => updateContainer('isFilled', e.target.checked)} />
                                         Remplir les Conteneurs
                                     </label>
                                 </div>
@@ -585,22 +470,14 @@ const SpaceCalcPage: React.FC = () => {
                         </div>
                         <div className="input-group">
                             <label htmlFor="vehicleType">Type de Véhicule</label>
-                            <select
-                                id="vehicleType"
-                                value={vehicleType}
-                                onChange={(e) => setVehicleType(e.target.value as VehicleType)}
-                            >
+                            <select id="vehicleType" value={vehicleType} onChange={(e) => setVehicleType(e.target.value as VehicleType)}>
                                 <option value="atmospheric">Véhicule Atmosphérique</option>
                                 <option value="interplanetary">Véhicule Interplanétaire</option>
                             </select>
                         </div>
                         <div className="input-group">
                             <label htmlFor="gravity">Environnement</label>
-                            <select
-                                id="gravity"
-                                value={gravity}
-                                onChange={(e) => setGravity(e.target.value)}
-                            >
+                            <select id="gravity" value={gravity} onChange={(e) => setGravity(e.target.value)}>
                                 {Object.entries(gravityOptions).map(([key, value]) => (
                                     <option key={key} value={key}>
                                         {key.charAt(0).toUpperCase() + key.slice(1)} ({value}g)
@@ -610,11 +487,7 @@ const SpaceCalcPage: React.FC = () => {
                         </div>
                         <div className="input-group">
                             <label htmlFor="atmosphere">Atmosphère</label>
-                            <select
-                                id="atmosphere"
-                                value={atmosphere}
-                                onChange={(e) => setAtmosphere(e.target.value)}
-                            >
+                            <select id="atmosphere" value={atmosphere} onChange={(e) => setAtmosphere(e.target.value)}>
                                 {Object.entries(atmosphereOptions).map(([key, value]) => (
                                     <option key={key} value={key}>
                                         {key.charAt(0).toUpperCase() + key.slice(1)} ({value * 100}%)
@@ -624,11 +497,7 @@ const SpaceCalcPage: React.FC = () => {
                         </div>
                         <div className="input-group">
                             <label htmlFor="multiplier">Multiplicateur de Charge</label>
-                            <select
-                                id="multiplier"
-                                value={multiplier}
-                                onChange={(e) => setMultiplier(e.target.value)}
-                            >
+                            <select id="multiplier" value={multiplier} onChange={(e) => setMultiplier(e.target.value)}>
                                 {Object.entries(containerMultiplierOptions).map(([key, value]) => (
                                     <option key={key} value={key}>
                                         {key.toUpperCase()} (×{value})
@@ -636,9 +505,7 @@ const SpaceCalcPage: React.FC = () => {
                                 ))}
                             </select>
                         </div>
-                        <button type="submit" className="calculate-btn">
-                            Calculer
-                        </button>
+                        <button type="submit" className="calculate-btn">Calculer</button>
                     </form>
                 </div>
                 {results && multiAxisResults && (
@@ -648,11 +515,7 @@ const SpaceCalcPage: React.FC = () => {
                             <pre style={{ whiteSpace: 'pre-wrap' }}>{generateSummary()}</pre>
                         </div>
                         <div className="export-section">
-                            <button 
-                                className="export-btn"
-                                onClick={exportResults}
-                                title="Exporter les résultats en JSON"
-                            >
+                            <button className="export-btn" onClick={exportResults} title="Exporter les résultats en JSON">
                                 Exporter les Résultats
                             </button>
                         </div>
@@ -699,11 +562,7 @@ const SpaceCalcPage: React.FC = () => {
                                         </div>
                                         <div className="detail-row">
                                             <span className="detail-label">Type</span>
-                                            <span className="detail-value">{multiAxisResults.vertical.thrusters[0].type}</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Quantité</span>
-                                            <span className="detail-value">{multiAxisResults.vertical.thrusters[0].count}</span>
+                                            <span className="detail-value">{multiAxisResults.vertical.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
                                         </div>
                                         <div className="detail-row">
                                             <span className="detail-label">Vmax</span>
@@ -712,23 +571,27 @@ const SpaceCalcPage: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="axis-section horizontal">
-                                    <h4>Propulsion</h4>
+                                    <h4>Propulsion Avant/Arrière</h4>
                                     <div className="axis-details">
                                         <div className="detail-row primary-info">
-                                            <span className="detail-label">Poussée Requise</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults.forward.requiredThrust).toLocaleString()} N</span>
+                                            <span className="detail-label">Poussée Avant</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.front.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type</span>
-                                            <span className="detail-value">{multiAxisResults.forward.thrusters[0].type}</span>
+                                            <span className="detail-label">Type (Avant)</span>
+                                            <span className="detail-value">{multiAxisResults.front.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                        </div>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Poussée Arrière</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.rear.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Quantité</span>
-                                            <span className="detail-value">{multiAxisResults.forward.thrusters[0].count}</span>
+                                            <span className="detail-label">Type (Arrière)</span>
+                                            <span className="detail-value">{multiAxisResults.rear.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Temps Freinage</span>
-                                            <span className="detail-value">{multiAxisResults.forward.brakingTime.toFixed(1)}s</span>
+                                            <span className="detail-label">Temps de freinage</span>
+                                            <span className="detail-value">{multiAxisResults.rear.brakingTime.toFixed(1)} s</span>
                                         </div>
                                     </div>
                                 </div>
@@ -736,20 +599,20 @@ const SpaceCalcPage: React.FC = () => {
                                     <h4>Déplacement Latéral</h4>
                                     <div className="axis-details">
                                         <div className="detail-row primary-info">
-                                            <span className="detail-label">Poussée Requise</span>
-                                            <span className="detail-value">{Math.round(multiAxisResults.lateral.requiredThrust).toLocaleString()} N</span>
+                                            <span className="detail-label">Poussée (Gauche)</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.lateral.left.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Type</span>
-                                            <span className="detail-value">{multiAxisResults.lateral.thrusters[0].type}</span>
+                                            <span className="detail-label">Type (Gauche)</span>
+                                            <span className="detail-value">{multiAxisResults.lateral.left.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
+                                        </div>
+                                        <div className="detail-row primary-info">
+                                            <span className="detail-label">Poussée (Droite)</span>
+                                            <span className="detail-value">{Math.round(multiAxisResults.lateral.right.requiredThrust).toLocaleString()} N</span>
                                         </div>
                                         <div className="detail-row">
-                                            <span className="detail-label">Quantité</span>
-                                            <span className="detail-value">{multiAxisResults.lateral.thrusters[0].count}</span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Efficacité</span>
-                                            <span className="detail-value">{(multiAxisResults.lateral.thrusters[0].efficiency * 100).toFixed(0)}%</span>
+                                            <span className="detail-label">Type (Droite)</span>
+                                            <span className="detail-value">{multiAxisResults.lateral.right.combination.map(c => `${c.count}x ${c.key}`).join(" + ")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -766,13 +629,12 @@ const SpaceCalcPage: React.FC = () => {
                                         </div>
                                         <div className="detail-row">
                                             <span className="detail-label">Batteries</span>
-                                            <span className="detail-value">{multiAxisResults.optimalBatteryCount}</span>
+                                            <span className="detail-value">{multiAxisResults.optimalBatteryCount} unités</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {/* Section Batteries */}
                         <div className="result-card battery-requirements">
                             <h3>
                                 <span className="card-title">Besoins en Batteries</span>
@@ -780,53 +642,45 @@ const SpaceCalcPage: React.FC = () => {
                             </h3>
                             <div className="battery-block">
                                 <div className="battery-image-container">
-                                <img 
-                                    src={batteryConfig === 'flexible' ? batteries.smallBattery.imagefile : batteries.largeBattery.imagefile} 
-                                    alt="Battery Icon" 
-                                    className="battery-image"
-                                />
+                                    <img src={batteries.smallBattery.imagefile} alt="Battery Icon" className="battery-image" />
                                 </div>
                                 <div className="battery-details">
-                                <div className="battery-header">
-                                    <span className="battery-config">Configuration Optimale &amp; Sécurisée</span>
-                                    <span className="battery-units">{results.batteryRequirements.count} unités</span>
-                                </div>
-                                <div className="battery-info-grid">
-                                    <div className="info-item">
-                                        <span className="info-label">Capacité Énergétique</span>
-                                        <span className="info-value">
-                                            {(results.batteryRequirements.totalStorage * 1000).toLocaleString()} kWh
+                                    <div className="battery-header">
+                                        <span className="battery-config">Configuration Optimale &amp; Sécurisée</span>
+                                        <span className="battery-units">
+                                            {results.batteryRequirements.combination.large} grandes + {results.batteryRequirements.combination.small} petites
                                         </span>
                                     </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Masse du Système</span>
-                                        <span className="info-value">{results.batteryRequirements.totalWeight.toLocaleString()} kg</span>
+                                    <div className="battery-info-grid">
+                                        <div className="info-item">
+                                            <span className="info-label">Capacité Énergétique</span>
+                                            <span className="info-value">{(results.batteryRequirements.totalStorage * 1000).toLocaleString()} kWh</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-label">Masse du Système</span>
+                                            <span className="info-value">{results.batteryRequirements.totalWeight.toLocaleString()} kg</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-label">Volume Requis</span>
+                                            <span className="info-value">{results.batteryRequirements.totalVolume.toLocaleString()} m³</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-label">Autonomie</span>
+                                            <span className="info-value">{Math.round(results.batteryRequirements.flightTime * 60)} min</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-label">Recharge</span>
+                                            <span className="info-value">{results.batteryRequirements.rechargeTime} min</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-label">Redondance</span>
+                                            <span className="info-value">+{((results.batteryRequirements.count / results.batteryRequirements.optimalCount - 1) * 100).toFixed(0)}%</span>
+                                        </div>
                                     </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Volume Requis</span>
-                                        <span className="info-value">{results.batteryRequirements.totalVolume.toLocaleString()} m³</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Autonomie</span>
-                                        <span className="info-value">{Math.round(results.batteryRequirements.flightTime * 60)} min</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Recharge</span>
-                                        <span className="info-value">{results.batteryRequirements.rechargeTime} min</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Redondance</span>
-                                        <span className="info-value">
-                                         +{((results.batteryRequirements.count / results.batteryRequirements.optimalCount - 1) * 100).toFixed(0)}%
-                                        </span>
-                                    </div>
-                                </div>
                                 </div>
                             </div>
                         </div>
-
-
-                </div>
+                    </div>
                 )}
             </div>
         </div>

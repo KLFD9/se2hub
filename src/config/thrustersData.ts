@@ -2,7 +2,7 @@ export interface ThrusterData {
     name: string;
     weight: number;
     thrust: number;
-    power: number;
+    power: number; // en Watts
     fuel: number | null;
     imagefile: string;
     efficiency: number;
@@ -11,7 +11,7 @@ export interface ThrusterData {
         maxEfficiency: number;
     } | null;
     spaceEfficiency: number;
-    powerToThrustRatio: number;
+    powerToThrustRatio: number; // en W/N
 }
 
 export interface CargoData {
@@ -31,11 +31,11 @@ export interface ItemData {
 
 export interface BatteryData {
     name: string;
-    maxStoredPower: number; // MWh
-    maxOutput: number; // MW
-    weight: number; // kg
+    maxStoredPower: number; // en MWh
+    maxOutput: number; // en MW
+    weight: number; // en kg
     rechargeTime: number; // minutes
-    volume: number; // m³
+    volume: number; // en m³
     imagefile: string;
 }
 
@@ -76,32 +76,32 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         name: "Large Ion Thruster",
         weight: 721,
         thrust: 172800,
-        power: 2400000,
+        power: 2400000, // 2.4 MW = 2400000 W
         fuel: null,
         imagefile: 'large_ion_thruster.png',
         efficiency: 1,
         atmosphere: null,
         spaceEfficiency: 1,
-        powerToThrustRatio: 72
+        powerToThrustRatio: 2400000 / 172800 // ≈13.89 W/N
     },
     smallIon: {
         name: "Small Ion Thruster",
         weight: 121,
         thrust: 14400,
-        power: 200000,
+        power: 200000, // 0.2 MW = 200000 W
         fuel: null,
         imagefile: 'ion_thruster.png',
         efficiency: 1,
         atmosphere: null,
         spaceEfficiency: 1,
-        powerToThrustRatio: 72
+        powerToThrustRatio: 200000 / 14400 // ≈13.89 W/N
     },
     largeHydrogen: {
         name: "Large Hydrogen Thruster",
         weight: 1222,
         thrust: 480000,
-        power: 600,
-        fuel: 386,
+        power: 600000, // 0.6 MW = 600000 W
+        fuel: 386, // selon vos données
         imagefile: 'large_hydrogen_thruster.png',
         efficiency: 1,
         atmosphere: {
@@ -109,14 +109,14 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 1,
-        powerToThrustRatio: 800
+        powerToThrustRatio: 600000 / 480000 // ≈1.25 W/N
     },
     smallHydrogen: {
         name: "Small Hydrogen Thruster",
         weight: 334,
         thrust: 98400,
-        power: 125,
-        fuel: 80,
+        power: 125000, // 0.125 MW = 125000 W (corrigé)
+        fuel: 80 * 1.25, // soit 100
         imagefile: 'hydrogen_thruster.png',
         efficiency: 1,
         atmosphere: {
@@ -124,13 +124,13 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 1,
-        powerToThrustRatio: 787.2
+        powerToThrustRatio: 125000 / 98400 // ≈1.27 W/N
     },
     largeAtmospheric: {
         name: "Large Atmospheric Thruster",
         weight: 2948,
         thrust: 576000,
-        power: 2400000,
+        power: 2400000, // 2.4 MW = 2400000 W
         fuel: null,
         imagefile: 'large_atmospheric_thruster.png',
         efficiency: 1,
@@ -139,13 +139,13 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 0,
-        powerToThrustRatio: 240
+        powerToThrustRatio: 2400000 / 576000 // ≈4.17 W/N
     },
     smallAtmospheric: {
         name: "Small Atmospheric Thruster",
         weight: 699,
         thrust: 96000,
-        power: 600000,
+        power: 600000, // 0.6 MW = 600000 W
         fuel: null,
         imagefile: 'atmospheric_thruster.png',
         efficiency: 1,
@@ -154,7 +154,23 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 0,
-        powerToThrustRatio: 160
+        powerToThrustRatio: 600000 / 96000 // ≈6.25 W/N
+    },
+    // Nouveau propulseur ajouté pour small grid
+    largeFlatAtmospheric: {
+        name: "Large Flat Atmospheric Thruster",
+        weight: 850,
+        thrust: 230000,
+        power: 1000000, // 1.0 MW = 1000000 W
+        fuel: null,
+        imagefile: 'large_flat_atmospheric_thruster.png',
+        efficiency: 1,
+        atmosphere: {
+            minEfficiency: 0,
+            maxEfficiency: 1
+        },
+        spaceEfficiency: 0,
+        powerToThrustRatio: 1000000 / 230000 // ≈4.35 W/N
     }
 };
 
@@ -163,31 +179,31 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
         name: "Large Ion Thruster",
         weight: 43200,
         thrust: 4320000,
-        power: 33600000,
+        power: 33600000, // 33.6 MW = 33600000 W
         fuel: null,
         imagefile: 'large_ion_thruster.png',
         efficiency: 1,
         atmosphere: null,
         spaceEfficiency: 1,
-        powerToThrustRatio: 129
+        powerToThrustRatio: 33600000 / 4320000 // ≈7.78 W/N
     },
     smallIon: {
         name: "Small Ion Thruster",
         weight: 4380,
         thrust: 345600,
-        power: 3360000,
+        power: 3360000, // 3.36 MW = 3360000 W
         fuel: null,
         imagefile: 'ion_thruster.png',
         efficiency: 1,
         atmosphere: null,
         spaceEfficiency: 1,
-        powerToThrustRatio: 103
+        powerToThrustRatio: 3360000 / 345600 // ≈9.72 W/N
     },
     largeHydrogen: {
         name: "Large Hydrogen Thruster",
         weight: 6940,
         thrust: 7200000,
-        power: 7500,
+        power: 7500000, // 7.5 MW = 7500000 W (corrigé)
         fuel: 4820,
         imagefile: 'large_hydrogen_thruster.png',
         efficiency: 1,
@@ -196,13 +212,13 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 1,
-        powerToThrustRatio: 960
+        powerToThrustRatio: 7500000 / 7200000 // ≈1.04 W/N
     },
     smallHydrogen: {
         name: "Small Hydrogen Thruster",
         weight: 1420,
         thrust: 1080000,
-        power: 1250,
+        power: 1250000, // 1.25 MW = 1250000 W (corrigé)
         fuel: 803,
         imagefile: 'hydrogen_thruster.png',
         efficiency: 1,
@@ -211,13 +227,13 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 1,
-        powerToThrustRatio: 864
+        powerToThrustRatio: 1250000 / 1080000 // ≈1.16 W/N
     },
     largeAtmospheric: {
         name: "Large Atmospheric Thruster",
         weight: 32970,
         thrust: 6480000,
-        power: 16800000,
+        power: 16800000, // 16.8 MW = 16800000 W
         fuel: null,
         imagefile: 'large_atmospheric_thruster.png',
         efficiency: 1,
@@ -226,13 +242,13 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 0,
-        powerToThrustRatio: 386
+        powerToThrustRatio: 16800000 / 6480000 // ≈2.59 W/N
     },
     smallAtmospheric: {
         name: "Small Atmospheric Thruster",
         weight: 4000,
         thrust: 648000,
-        power: 2400000,
+        power: 2400000, // 2.4 MW = 2400000 W
         fuel: null,
         imagefile: 'atmospheric_thruster.png',
         efficiency: 1,
@@ -241,7 +257,7 @@ export const largeShipThrusters: Record<string, ThrusterData> = {
             maxEfficiency: 1
         },
         spaceEfficiency: 0,
-        powerToThrustRatio: 270
+        powerToThrustRatio: 2400000 / 648000 // ≈3.70 W/N
     }
 };
 
@@ -289,7 +305,7 @@ export const itemData: Record<string, ItemData> = {
         mass: 1.0,
         volume: 0.37
     },
-    // ... tous les autres items ...
+    // ... autres items ...
     "DisplayName_Item_UraniumIngot": {
         name: "Uranium Ingot",
         type: "Ingot",
@@ -302,21 +318,21 @@ export const itemData: Record<string, ItemData> = {
 export const batteries: Record<string, BatteryData> = {
     smallBattery: {
         name: "Petite Batterie",
-        maxStoredPower: 0.2, // MW
+        maxStoredPower: 0.05, // 50 kWh
         maxOutput: 0.2, // MW
         weight: 146.4,
         rechargeTime: 30,
         volume: 0.125,
-        imagefile:'/assets/blocks/battery/Icon_Block_Small_Battery.webp'
+        imagefile: '/assets/blocks/battery/Icon_Block_Small_Battery.webp'
     },
     largeBattery: {
         name: "Grande Batterie",
-        maxStoredPower: 4.0, // MW
+        maxStoredPower: 3.0, // 3 MWh
         maxOutput: 4.0, // MW
         weight: 1040.4,
         rechargeTime: 30,
         volume: 2.25,
-        imagefile:'/assets/blocks/battery/Icon_Block_Big_Battery.webp'
+        imagefile: '/assets/blocks/battery/Icon_Block_Big_Battery.webp'
     }
 };
 
@@ -381,4 +397,4 @@ export const ores: Record<string, OreData> = {
         volume: 0.37,
         baseValue: 50
     }
-}; 
+};
