@@ -374,21 +374,21 @@ export const ores: Record<string, OreData> = {
 };
 
 
-// Nouvelle fonction d'optimisation des batteries
 export const optimizeBatteryCombo = (requiredPower: number, requiredEnergy: number) => {
     const large = batteries.largeBattery;
     const small = batteries.smallBattery;
     
-    let bestCombo = { large: 0, small: Infinity };
+    let bestCombo = { large: Infinity, small: Infinity };
     const minLarge = Math.ceil(Math.max(requiredPower / large.maxOutput, requiredEnergy / large.maxStoredPower));
-
+  
     for (let l = minLarge; l >= 0; l--) {
-        const s = Math.ceil((requiredEnergy - l * large.maxStoredPower) / small.maxStoredPower);
-        if (l * large.maxOutput + s * small.maxOutput >= requiredPower) {
-            if ((l + s) < (bestCombo.large + bestCombo.small)) {
-                bestCombo = { large: l, small: Math.max(s, 0) };
-            }
+      const s = Math.max(0, Math.ceil((requiredEnergy - l * large.maxStoredPower) / small.maxStoredPower));
+      if (l * large.maxOutput + s * small.maxOutput >= requiredPower) {
+        if ((l + s) < (bestCombo.large + bestCombo.small)) {
+          bestCombo = { large: l, small: s };
         }
+      }
     }
     return bestCombo;
-};
+  };
+  
