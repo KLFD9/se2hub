@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { BiMenu, BiNews, BiHome, BiImage, BiGroup, BiCube, BiVideo, BiSolidWrench } from 'react-icons/bi'
+import { BiMenu, BiHome, BiImage, BiGroup, BiVideo, BiSolidWrench } from 'react-icons/bi'
+import { FaGithub } from 'react-icons/fa'
 import { Link, useLocation } from 'react-router-dom'
 import '../styles/components/Navbar.css'
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [showHomeSubmenu, setShowHomeSubmenu] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -17,7 +17,6 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Navigation principale (toujours visible)
   const navigationItems = [
     { label: 'Accueil', path: '/', icon: BiHome },
     { label: 'Galerie', path: '/gallery', icon: BiImage },
@@ -26,38 +25,14 @@ export const Navbar = () => {
     { label: 'Communauté', path: '/community', icon: BiGroup }
   ]
 
-  // Sections de la page d'accueil (sous-menu)
-  const homeSections = [
-    { label: 'Actualités', id: 'news-section', icon: BiNews },
-    { label: 'Fonctionnalités', id: 'features-grid', icon: BiCube },
-    { label: 'Communauté', id: 'community-section', icon: BiGroup }
-  ]
-
-  const handleSectionClick = (id: string) => {
-    const element = document.getElementById(id)
-    if (element) {
-      const navHeight = 80 // Hauteur de la navbar
-      const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.pageYOffset - navHeight
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      })
-    }
+  const handleNavClick = () => {
     setIsMobileMenuOpen(false)
-    setShowHomeSubmenu(false)
-  }
-
-  const handleNavClick = (path: string) => {
-    setIsMobileMenuOpen(false)
-    setShowHomeSubmenu(path === '/' && location.pathname === '/')
   }
 
   return (
     <nav className={`navbar ${isScrolled ? 'scrolled' : ''} ${isMobileMenuOpen ? 'menu-open' : ''}`}>
       <div className="navbar-container">
-        <Link to="/" className="logo" onClick={() => handleNavClick('/')}>
+        <Link to="/" className="logo" onClick={handleNavClick}>
           <div className="logo-wrapper">
             <div className="logo-main">
               <span className="logo-glitch" data-text="SE2">SE2</span>
@@ -77,33 +52,19 @@ export const Navbar = () => {
                     to={item.path}
                     className={`nav-link ${isActive ? 'active' : ''}`}
                     style={{ '--delay': `${index * 0.1}s` } as React.CSSProperties}
-                    onClick={() => handleNavClick(item.path)}
+                    onClick={handleNavClick}
                   >
                     <Icon className="nav-icon" />
                     <span className="link-text">{item.label}</span>
                     <span className="link-decoration" />
                   </Link>
-                  
-                  {item.path === '/' && location.pathname === '/' && showHomeSubmenu && (
-                    <div className="home-submenu">
-                      {homeSections.map((section) => {
-                        const SectionIcon = section.icon
-                        return (
-                          <button
-                            key={section.id}
-                            onClick={() => handleSectionClick(section.id)}
-                            className="submenu-link"
-                          >
-                            <SectionIcon className="nav-icon" />
-                            <span className="link-text">{section.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
                 </div>
               )
             })}
+            <a href="#" className="github-cta">
+              <FaGithub className="github-icon" />
+              <span>Contribuer</span>
+            </a>
           </div>
         </div>
         <button 
@@ -120,4 +81,4 @@ export const Navbar = () => {
       </div>
     </nav>
   )
-} 
+}
