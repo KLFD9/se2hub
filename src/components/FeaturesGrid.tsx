@@ -184,7 +184,12 @@ export const FeaturesGrid = () => {
         <div className={`mods-grid view-${viewType}`}>
           {filteredMods.map(mod => (
             <div key={mod.id} className="mod-card">
-              <div className="mod-background" style={{ backgroundImage: `url(${mod.imageUrl})` }}>
+              <div 
+                className="mod-background" 
+                style={{ backgroundImage: `url(${mod.imageUrl})` }}
+                role="img"
+                aria-label={`Aperçu du mod ${mod.title} - ${mod.category}`}
+              >
                 <button 
                   className={`favorite-btn ${favorites.includes(mod.id) ? 'active' : ''}`}
                   onClick={() => toggleFavorite(mod.id)}
@@ -232,4 +237,4 @@ export const FeaturesGrid = () => {
       </div>
     </section>
   )
-} 
+}

@@ -228,7 +228,11 @@ export const CommunityGallery: React.FC = () => {
                     onClick={() => setSelectedImage(image)}
                   >
                     <div className="image-container">
-                      <img src={image.url} alt={image.title} loading="lazy" />
+                      <img 
+                        src={image.url} 
+                        alt={`${image.title} - Construction spatiale par ${image.author.name}`} 
+                        loading="lazy" 
+                      />
                       <div className="image-overlay">
                         <div className="image-tags">
                           {image.tags.map((tag, idx) => (
@@ -244,7 +248,7 @@ export const CommunityGallery: React.FC = () => {
                             {image.author.avatarUrl ? (
                               <img
                                 src={image.author.avatarUrl}
-                                alt={`Avatar de ${image.author.name}`}
+                                alt={`Photo de profil de ${image.author.name}`}
                                 onError={e => {
                                   const img = e.target as HTMLImageElement;
                                   img.style.display = 'none';

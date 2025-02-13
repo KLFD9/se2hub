@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Sitemap: https://engineers-hub.com/sitemap.xml
+
+# Optimize crawling
+Disallow: /src/assets/
+Disallow: /*.js$
+Disallow: /*.css$

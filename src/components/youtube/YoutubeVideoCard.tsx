@@ -71,7 +71,7 @@ const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
         <img 
           className="card-thumbnail" 
           src={thumbnailSrc} 
-          alt={video.title || ''} 
+          alt={`Miniature de la vidéo : ${video.title}`} 
           onError={handleThumbnailError}
           loading="lazy" 
         />
@@ -81,7 +81,7 @@ const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
         <img 
           className="channel-avatar" 
           src={avatarSrc}
-          alt={video.channelTitle || ''} 
+          alt={`Logo de la chaîne ${video.channelTitle}`} 
           onError={handleAvatarError}
           loading="lazy"
         />
