@@ -5,6 +5,7 @@ import { FeaturesGrid } from './components/FeaturesGrid';
 import { CommunityGallery } from './components/CommunityGallery';
 import { ArticlePage } from './components/ArticlePage';
 import { Footer } from './components/Footer';
+import { OpenSourceBanner } from './components/OpenSourceBanner';
 import YoutubeLogsPage from './pages/YoutubeLogsPage';
 import SpaceflixPage from './pages/SpaceflixPage';
 import ToolsPage from './pages/ToolsPage';
@@ -16,6 +17,7 @@ const HomePage: React.FC = () => {
   return (
     <main>
       <Hero />
+      <OpenSourceBanner />
       <FeaturesGrid />
       <section className="social-section" id="social-section"></section>
     </main>
