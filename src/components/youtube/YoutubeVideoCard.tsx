@@ -86,7 +86,7 @@ const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
           loading="lazy"
         />
         <div className="video-details">
-          <h3 className="card-title" title={video.title || ''}>{video.title || 'Sans titre'}</h3>
+          <h3 className="video-card-title" title={video.title || ''}>{video.title || 'Sans titre'}</h3>
           <div className="card-meta">
             <span className="channel-title">{video.channelTitle || 'Chaîne inconnue'}</span>
             <span className="video-stats">

@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 .youtube-videos {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.5rem;
     padding: 1.5rem;
     background: #0D1117;
+    margin-top: 6rem;
 }
   
 .youtube-video-card {
@@ -70,11 +73,11 @@
     min-width: 0;
 }
   
-.card-title {
-    font-size: 0.95rem;
+.video-card-title {
+    font-size: 0.85rem;
     font-weight: 600;
     margin: 0 0 0.25rem;
-    color: #fff;
+    color: #FF2994;
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -84,7 +87,7 @@
 }
   
 .card-meta {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #aaa;
     margin: 0;
     display: flex;

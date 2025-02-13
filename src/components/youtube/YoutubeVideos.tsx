@@ -89,22 +89,8 @@ const YoutubeVideos: React.FC = () => {
       clearTimeout(timeoutId);
     };
   }, [nextPageToken, loadingMore, loading, hasMore, loadVideos]);
-
-  // Fonction de rafraîchissement
-  const handleRefresh = () => {
-    loadVideos('', true);
-  };
-
   return (
     <>
-      <button 
-        onClick={handleRefresh} 
-        disabled={loading || loadingMore}
-        style={{ margin: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
-      >
-        Rafraîchir
-      </button>
-
       {quotaError && (
         <div style={{ 
           padding: '1rem', 
