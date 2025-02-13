@@ -26,7 +26,8 @@ html {
 
 .tools-hero {
     position: relative;
-    padding: 8rem 2rem;
+    min-height: 100vh;
+    padding: 0;
     background: linear-gradient(
         to bottom,
         var(--color-surface-dark),
@@ -34,59 +35,179 @@ html {
     );
     overflow: hidden;
     margin-top: 4rem;
+    display: flex;
+    justify-content: center;
+}
+
+.tools-hero-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.tools-hero-glow::before,
+.tools-hero-glow::after {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    filter: blur(100px);
+}
+
+.tools-hero-glow::before {
+    top: -100px;
+    left: -100px;
+    background: radial-gradient(
+        circle,
+        rgba(0, 157, 255, 0.15),
+        transparent 70%
+    );
+    animation: topGlow 8s ease-in-out infinite alternate;
+}
+
+.tools-hero-glow::after {
+    bottom: -100px;
+    right: -100px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 123, 0, 0.15),
+        transparent 70%
+    );
+    animation: bottomGlow 8s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes topGlow {
+    from {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.5;
+    }
+    to {
+        transform: translate(20px, 20px) scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes bottomGlow {
+    from {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.5;
+    }
+    to {
+        transform: translate(-20px, -20px) scale(1.1);
+        opacity: 0.8;
+    }
 }
 
 .tools-hero::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: 
-        radial-gradient(circle at 20% 150%, rgba(0, 127, 255, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% -50%, rgba(0, 127, 255, 0.1) 0%, transparent 50%);
+        radial-gradient(
+            1200px circle at 5% -5%,
+            rgba(0, 157, 255, 0.15) 0%,
+            rgba(0, 157, 255, 0.08) 25%,
+            transparent 50%
+        ),
+        radial-gradient(
+            1200px circle at 95% 105%,
+            rgba(255, 123, 0, 0.15) 0%,
+            rgba(255, 123, 0, 0.08) 25%,
+            transparent 50%
+        );
+    animation: heroGlow 12s ease-in-out infinite;
     z-index: 0;
+    mix-blend-mode: screen;
 }
 
 .tools-hero::after {
     content: '';
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 5px;
-    background: linear-gradient(
-        to bottom,
-        transparent,
-        rgba(0, 127, 255, 0.2),
-        transparent
-    );
-    animation: scanline 8s linear infinite;
-    pointer-events: none;
-    z-index: 2;
+    inset: -50%;
+    background: 
+        radial-gradient(
+            150px circle at 5% -5%,
+            rgba(0, 157, 255, 0.2),
+            transparent 70%
+        ),
+        radial-gradient(
+            150px circle at 95% 105%,
+            rgba(255, 123, 0, 0.2),
+            transparent 70%
+        );
+    animation: rotateGlow 20s ease-in-out infinite;
+    z-index: 0;
+    mix-blend-mode: soft-light;
 }
 
-@keyframes particles {
+@keyframes heroGlow {
     0% {
-        background-position: center, 0 0, 0 0;
+        opacity: 0.7;
+        filter: hue-rotate(0deg) brightness(1);
+    }
+    25% {
+        opacity: 0.9;
+        filter: hue-rotate(15deg) brightness(1.1);
+    }
+    50% {
+        opacity: 0.7;
+        filter: hue-rotate(0deg) brightness(1);
+    }
+    75% {
+        opacity: 0.9;
+        filter: hue-rotate(-15deg) brightness(1.1);
     }
     100% {
-        background-position: center, 60px 60px, 20px 20px;
+        opacity: 0.7;
+        filter: hue-rotate(0deg) brightness(1);
     }
+}
+
+@keyframes rotateGlow {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    25% {
+        transform: rotate(90deg) scale(1.1);
+    }
+    50% {
+        transform: rotate(180deg) scale(1);
+    }
+    75% {
+        transform: rotate(270deg) scale(1.1);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+.tools-hero-inner {
+    max-width: 1400px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    align-items: center;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 2;
+    background: rgba(16, 18, 27, 0.3);
+    backdrop-filter: blur(20px);
 }
 
 .tools-hero-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
+    padding-left: 2rem;
+    max-width: 100%;
+    margin: 0;
 }
 
 .hero-text-container {
     max-width: 600px;
     text-align: left;
     animation: fadeInUp 1s ease forwards;
+    position: sticky;
+    top: 4rem;
 }
 
 .tools-hero h1 {
@@ -117,7 +238,7 @@ html {
 }
 
 .tools-hero p {
-    font-size: 1.25rem;
+    font-size: 1rem;
     line-height: 1.6;
     color: var(--color-text-secondary);
     margin-bottom: 2rem;
@@ -200,13 +321,32 @@ html {
 }
 
 .tools-grid {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    height: 100%;
     padding: 2rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    align-content: center;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) transparent;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+.tools-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tools-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tools-grid::-webkit-scrollbar-thumb {
+    background-color: var(--color-accent);
+    border-radius: 3px;
 }
 
 .section-title {
@@ -238,7 +378,7 @@ html {
     background-clip: text;
     -webkit-text-fill-color: transparent;
     opacity: 0.5;
-    filter: blur(8px);
+    filter: blur(10px);
     transform: translateY(4px);
 }
 
@@ -263,17 +403,26 @@ html {
     text-decoration: none;
     color: #fff;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.3s ease,
+                opacity 0.3s ease;
     border: 1px solid var(--color-border);
     position: relative;
     overflow: hidden;
     display: grid;
     grid-template-rows: auto auto 1fr auto;
     gap: 0.3rem;
-    height: 200px;
+    height: 250px;
     animation: fadeInUp 0.6s ease forwards;
     opacity: 0;
     backdrop-filter: blur(10px);
+    background: rgba(30, 32, 34, 0.7);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.3s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+    animation: cardEntrance 0.8s ease forwards;
 }
 
 .tool-card::before {
@@ -369,10 +518,11 @@ html {
 }
 
 .tool-card:hover {
-    transform: translateY(-2px) scale(1.01);
-    background: rgba(35, 36, 36, 0.226);
-    border-color: rgba(0, 127, 255, 0.3);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(-5px) scale(1.02) translateZ(20px);
+    background: rgba(35, 37, 40, 0.9);
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(0, 127, 255, 0.3);
 }
 
 .tool-card:hover::before {
@@ -384,6 +534,82 @@ html {
     outline: none;
     box-shadow: 0 0 0 2px var(--color-background),
                 0 0 0 4px rgba(var(--card-accent-rgb), 0.3);
+}
+
+.tool-card.planned {
+    cursor: default;
+    background: rgba(30, 32, 34, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    pointer-events: none;
+    animation: plannedCardFloat 4s ease-in-out infinite;
+    transition: all 0.3s ease;
+    opacity: 0.6;
+    backdrop-filter: blur(10px);
+}
+
+
+.tool-card.planed  {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.tool-card.planned::before {
+    opacity: 0.02;
+}
+
+.tool-card.planned::after {
+    opacity: 0.2;
+}
+
+.tool-card.planned .tool-title-group h2,
+.tool-card.planned .tool-creator,
+.tool-card.planned .tool-description,
+.tool-card.planned .tool-tag {
+    opacity: 0.5;
+
+    color: rgba(255, 255, 255, 0.287);
+}
+
+.tool-card.planned .tool-progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tool-card.planned .tool-status {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.tool-card.planned:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(30, 32, 34, 0.15);
+    animation: none;
+}
+
+.tool-card.planned .tool-footer {
+    opacity: 0.3;
+}
+
+.tool-card.planned .tool-action-btn {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.tool-card.planned::after {
+    content: 'Bientôt';
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(4px);
+    z-index: 3;
+}
+
+.tool-card.planned .tool-icon {
+    display: none;
 }
 
 .tool-header {
@@ -609,14 +835,10 @@ html {
 
 .faq-section {
     padding: 6rem 2rem;
-    background: linear-gradient(
-        to bottom,
-        var(--color-surface-dark) 0%,
-        var(--color-background) 100%
-    );
+    background: var(--color-background);
     position: relative;
     overflow: hidden;
-    margin-top: -2rem;
+    margin-top: 0;
 }
 
 .faq-section::before {
@@ -675,11 +897,16 @@ html {
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
     position: relative;
-    min-height: 120px;
+    min-height: 2rem;
     display: flex;
     flex-direction: column;
     transform-origin: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transform: none;
+    transition: all 0.3s ease;
+    transform-origin: top;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .faq-item:nth-child(odd) {
@@ -730,6 +957,26 @@ html {
     box-shadow: 
         0 2px 10px rgba(0, 0, 0, 0.1),
         0 1px 2px rgba(0, 127, 255, 0.05);
+    transform: perspective(1000px) translateZ(10px);
+    box-shadow: 
+        0 10px 20px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0, 127, 255, 0.2);
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.faq-item.active .faq-answer {
+    max-height: 200px;
+    opacity: 1;
+    transform: translateY(0);
+    padding: 1rem 0;
 }
 
 .faq-question {
@@ -742,6 +989,8 @@ html {
     font-weight: 500;
     letter-spacing: -0.01em;
     line-height: 1.4;
+    position: relative;
+    padding-right: 2rem;
 }
 
 .faq-question svg {
@@ -752,6 +1001,21 @@ html {
     transition: transform 0.3s ease;
     margin-top: 0.2rem;
     transform: scale(1);
+}
+
+.faq-question::after {
+    content: '+';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: var(--color-accent);
+    transition: transform 0.3s ease;
+}
+
+.faq-item.active .faq-question::after {
+    transform: translateY(-50%) rotate(45deg);
 }
 
 .faq-item:hover .faq-question svg {
@@ -1123,4 +1387,96 @@ html {
         rgba(0, 127, 255, 0.2),
         transparent
     );
+}
+
+@media (max-width: 1200px) {
+    .tools-hero-inner {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .tools-hero-content {
+        padding: 2rem;
+    }
+
+    .tools-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    .hero-text-container {
+        position: static;
+    }
+}
+
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px) translateZ(-100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) translateZ(0);
+    }
+}
+
+/* Délai d'animation pour chaque carte */
+.tool-card:nth-child(1) { animation-delay: 0.1s; }
+.tool-card:nth-child(2) { animation-delay: 0.2s; }
+.tool-card:nth-child(3) { animation-delay: 0.3s; }
+.tool-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes plannedCardFloat {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-5px); }
+}
+
+/* Ajout d'un effet de scintillement */
+.floating-particles {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        radial-gradient(1px circle at center, rgba(0, 157, 255, 0.3) 0%, transparent 100%),
+        radial-gradient(1px circle at center, rgba(255, 123, 0, 0.3) 0%, transparent 100%);
+    background-size: 10px 10px, 15px 15px;
+    animation: particlesMovement 20s linear infinite;
+    opacity: 0.3;
+    z-index: 1;
+    mix-blend-mode: screen;
+}
+
+@keyframes particlesMovement {
+    0% {
+        background-position: 0 0, 0 0;
+    }
+    100% {
+        background-position: 100px 100px, -100px -100px;
+    }
+}
+
+.tools-hero-scanline {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(0, 157, 255, 0.05) 50%,
+        rgba(255, 123, 0, 0.05) 51%,
+        transparent 100%
+    );
+    background-size: 100% 10px;
+    animation: scanlineMove 10s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.3;
+}
+
+@keyframes scanlineMove {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
 }
