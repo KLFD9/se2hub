@@ -10,34 +10,64 @@
   overflow: hidden;
 }
 
-/* Effet de grain */
-.opensource-banner::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  pointer-events: none;
+@keyframes perspectiveWave {
+  0% {
+    transform: perspective(1000px) rotateX(15deg) rotateY(-8deg) rotate(-8deg) translateZ(-150px);
+    background-position: 0% 50%;
+    filter: blur(2px) brightness(0.95);
+  }
+  25% {
+    transform: perspective(1000px) rotateX(18deg) rotateY(2deg) rotate(-8deg) translateZ(-75px);
+    filter: blur(1.5px) brightness(0.975);
+  }
+  50% {
+    transform: perspective(1000px) rotateX(20deg) rotateY(8deg) rotate(-8deg) translateZ(0);
+    background-position: 100% 50%;
+    filter: blur(1px) brightness(1);
+  }
+  75% {
+    transform: perspective(1000px) rotateX(18deg) rotateY(2deg) rotate(-8deg) translateZ(-75px);
+    filter: blur(1.5px) brightness(0.975);
+  }
+  100% {
+    transform: perspective(1000px) rotateX(15deg) rotateY(-8deg) rotate(-8deg) translateZ(-150px);
+    background-position: 0% 50%;
+    filter: blur(2px) brightness(0.95);
+  }
 }
 
 .opensource-banner::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  right: -50%;
-  bottom: -50%;
+  top: -200%;
+  left: -200%;
+  right: -200%;
+  bottom: -200%;
   background: radial-gradient(
-    circle at center,
-    rgba(97, 218, 251, 0.05) 0%,
+    ellipse at center,
+    rgba(13, 196, 174, 0.364) 0%,
+    rgba(25, 53, 118, 0.365) 25%,
+    rgba(10, 159, 239, 0.305) 50%,
     transparent 70%
+  ), 
+  repeating-linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(77, 166, 226, 0.347) 15%,
+    rgba(97, 218, 251, 0.32) 35%,
+    rgba(97, 218, 251, 0.08) 50%,
+    rgba(251, 97, 194, 0.05) 65%,
+    rgba(251, 97, 243, 0.02) 85%,
+    transparent 100%
   );
-  transform: rotate(-12deg);
+  background-size: 300% 300%, 400% 400%;
   pointer-events: none;
+  animation: perspectiveWave 25s ease-in-out infinite;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  will-change: transform, filter;
+  transform-style: preserve-3d;
+  mix-blend-mode: soft-light;
 }
 
 .opensource-content {
@@ -87,10 +117,6 @@
   color: #61dafb21;
   transform: rotate(-12deg);
   margin-top: -0.5rem;;
-}
-
-.highlight svg:hover {
-  fill: #61dafb21;
 }
 
 .github-button {
@@ -152,8 +178,14 @@
 @media (max-width: 768px) {
   .opensource-banner {
     padding: 2rem 1.5rem;
-    margin: 1.5rem 1rem;
+    margin: 1rem auto;
     border-radius: 16px;
+  }
+
+  .highlight svg {
+    top: calc(20% - 5rem);
+    right: calc(60% + 1rem);
+    font-size: 20rem;
   }
 
   .opensource-content {
@@ -174,6 +206,6 @@
   }
   
   .opensource-content p {
-    font-size: 1.05rem;
+    font-size: 0.85rem;
   }
 }
