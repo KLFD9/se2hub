@@ -1,15 +1,15 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { CommunityGallery } from './components/CommunityGallery';
-import { ArticlePage } from './components/ArticlePage';
-import { Footer } from './components/Footer';
-import { OpenSourceBanner } from './components/OpenSourceBanner';
-import SpaceflixPage from './pages/SpaceflixPage';
-import ToolsPage from './pages/ToolsPage';
-import SpaceCalcPage from './pages/SpaceCalcPage';
-import './styles/App.css';
+import { HashRouter, Routes, Route } from 'react-router-dom'
+import { Navbar } from './components/Navbar'
+import { Hero } from './components/Hero'
+import { CommunityGallery } from './components/CommunityGallery'
+import { ArticlePage } from './components/ArticlePage'
+import { Footer } from './components/Footer'
+import { OpenSourceBanner } from './components/OpenSourceBanner'
+import SpaceflixPage from './pages/SpaceflixPage'
+import ToolsPage from './pages/ToolsPage'
+import SpaceCalcPage from './pages/SpaceCalcPage'
+import './styles/App.css'
+import React from 'react'
 
 const HomePage: React.FC = () => {
   return (
@@ -18,12 +18,12 @@ const HomePage: React.FC = () => {
       <OpenSourceBanner />
       <section className="social-section" id="social-section"></section>
     </main>
-  );
-};
+  )
+}
 
 const App: React.FC = () => {
   return (
-    <Router basename="/se2hub">
+    <HashRouter basename="/se2hub">
       <div className="app">
         <Navbar />
         <Routes>
@@ -36,8 +36,8 @@ const App: React.FC = () => {
         </Routes>
         <Footer />
       </div>
-    </Router>
-  );
-};
+    </HashRouter>
+  )
+}
 
-export default App;
+export default App
