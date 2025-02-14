@@ -79,8 +79,7 @@ function loadCache(pageToken = "", videoId?: string): VideosResponse | null {
     }
 
     return parsedCache.data;
-  } catch (err) {
-    console.warn("Erreur lors du chargement du cache :", err);
+  } catch {
     return null;
   }
 }
@@ -134,8 +133,7 @@ function saveCache(data: VideosResponse, pageToken = ""): void {
     }
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-  } catch (e) {
-    console.warn("Erreur lors de la sauvegarde du cache :", e);
+  } catch {
     clearCache();
   }
 }
@@ -213,8 +211,7 @@ async function getVideoById(
       publishedAt: item.snippet.publishedAt,
       likeCount: item.statistics.likeCount,
     };
-  } catch (error) {
-    console.error("Erreur lors de la récupération de la vidéo par ID :", error);
+  } catch {
     return null;
   }
 }
@@ -245,18 +242,13 @@ export async function getSpaceEngineers2Videos(
   if (!requestedVideoId) {
     const cachedData = loadCache(pageToken);
     if (cachedData) {
-      console.log("Retour des données en cache");
+      // On retourne immédiatement le cache
       return cachedData;
     }
   }
 
   // 5.3 - Pas de cache ou besoin de données fraîches
-  console.log(
-    "Requête à l'API YouTube",
-    requestedVideoId ? "pour la vidéo : " + requestedVideoId : ""
-  );
-
-  const maxResults = requestedVideoId ? 50 : 12; // plus grand si on cherche une vidéo précise
+  const maxResults = requestedVideoId ? 50 : 12;
 
   try {
     const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
@@ -266,7 +258,6 @@ export async function getSpaceEngineers2Videos(
     searchUrl.searchParams.append("maxResults", maxResults.toString());
     searchUrl.searchParams.append("key", apiKey);
 
-    // On peut choisir l'ordre par date pour trouver les vidéos récentes
     if (requestedVideoId) {
       searchUrl.searchParams.append("order", "date");
     }
@@ -277,22 +268,18 @@ export async function getSpaceEngineers2Videos(
 
     const searchData = await makeYoutubeRequest(searchUrl.toString());
     if (!searchData.items || searchData.items.length === 0) {
-      console.log("Aucune vidéo trouvée dans les résultats");
       return { videos: [], nextPageToken: undefined };
     }
 
-    // Extraction des IDs de vidéo
     const videoIds = searchData.items
       .filter((item: any) => item.id && item.id.videoId)
       .map((item: any) => item.id.videoId)
       .join(",");
 
     if (!videoIds) {
-      console.log("Aucun ID de vidéo valide trouvé");
       return { videos: [], nextPageToken: undefined };
     }
 
-    // Récupération des détails des vidéos
     const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
     detailsUrl.searchParams.append("part", "snippet,contentDetails,statistics");
     detailsUrl.searchParams.append("id", videoIds);
@@ -304,7 +291,6 @@ export async function getSpaceEngineers2Videos(
 
     const detailsData = await makeYoutubeRequest(detailsUrl.toString());
     if (!detailsData.items || detailsData.items.length === 0) {
-      console.log("Aucun détail de vidéo trouvé");
       return { videos: [], nextPageToken: undefined };
     }
 
@@ -337,8 +323,7 @@ export async function getSpaceEngineers2Videos(
             ])
           );
         }
-      } catch (error) {
-        console.warn("Erreur lors de la récupération des miniatures de chaîne :", error);
+      } catch {
         // on continue sans avatars
       }
     }
@@ -383,17 +368,13 @@ export async function getSpaceEngineers2Videos(
 
     return response;
   } catch (error) {
-    console.error("Erreur lors de la récupération des vidéos :", error);
-
     // Vérifie si c'est un problème de quota
     if (
       error instanceof Error &&
       (error.message.includes("quota") || error.message.includes("403"))
     ) {
-      // Tente de charger des données expirées
       const cachedData = loadCache(pageToken);
       if (cachedData) {
-        console.log("Retour des données expirées du cache (quota dépassé)");
         return cachedData;
       }
     }
