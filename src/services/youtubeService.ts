@@ -1,5 +1,3 @@
-// src/services/youtubeService.ts
-
 import { Video } from "../types/Video";
 
 export interface VideosResponse {
@@ -7,377 +5,206 @@ export interface VideosResponse {
   nextPageToken?: string;
 }
 
-/* --------------------------------------------------
-   1. FORMATAGE DE LA DURÉE YOUTUBE (PT..S -> HH:MM:SS)
--------------------------------------------------- */
-function formatYoutubeDuration(isoDuration: string): string {
-  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
-  const matches = isoDuration.match(regex);
-  if (!matches) return "00:00";
-
-  const hours = parseInt(matches[1] || "0", 10);
-  const minutes = parseInt(matches[2] || "0", 10);
-  const seconds = parseInt(matches[3] || "0", 10);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  }
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
-/* --------------------------------------------------
-   2. GESTION DU CACHE LOCALSTORAGE
--------------------------------------------------- */
-const CACHE_KEY = "youtube_videos_cache";
-const CACHE_DURATION = 1000 * 60 * 60 * 4; // 4 heures de cache
-
-interface CacheData {
-  data: VideosResponse;
-  timestamp: number;
-  pageTokens: Record<string, VideosResponse>;
-}
-
-function clearCache() {
-  localStorage.removeItem(CACHE_KEY);
-}
-
-/**
- * Charge les données depuis le cache local.
- * @param pageToken  Token de page pour la pagination.
- * @param videoId    Identifiant de vidéo spécifique (facultatif).
- * @returns          Données trouvées ou null si absentes / expirées.
- */
-function loadCache(pageToken = "", videoId?: string): VideosResponse | null {
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (!cached) return null;
-
-    const parsedCache = JSON.parse(cached) as CacheData;
-    // Vérifie si le cache est expiré
-    if (Date.now() - parsedCache.timestamp > CACHE_DURATION) {
-      localStorage.removeItem(CACHE_KEY);
-      return null;
-    }
-
-    // Vérifie si la vidéo demandée existe dans le cache
-    if (videoId) {
-      const videoInCache =
-        parsedCache.data.videos.some((v) => v.id === videoId) ||
-        Object.values(parsedCache.pageTokens).some((page) =>
-          page.videos.some((v) => v.id === videoId)
-        );
-      if (!videoInCache) {
-        return null;
-      }
-    }
-
-    // Retourne la page demandée si elle existe
-    if (pageToken && parsedCache.pageTokens[pageToken]) {
-      return parsedCache.pageTokens[pageToken];
-    }
-
-    return parsedCache.data;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Sauvegarde des données dans le cache local en fusionnant
- * toujours les nouvelles vidéos dans la liste principale.
- * @param data       Données à sauvegarder.
- * @param pageToken  Token de page pour la pagination.
- */
-function saveCache(data: VideosResponse, pageToken = ""): void {
-  try {
-    const existing = localStorage.getItem(CACHE_KEY);
-    let cacheData: CacheData;
-
-    if (existing) {
-      cacheData = JSON.parse(existing) as CacheData;
-
-      // 1. Fusion des vidéos avec celles déjà présentes
-      const existingVideos = cacheData.data.videos;
-      const newVideos = data.videos;
-
-      // 2. Combiner et dédupliquer
-      const allVideos = [...existingVideos, ...newVideos];
-      const uniqueVideos = allVideos.filter(
-        (video, index, self) =>
-          index === self.findIndex((v) => v.id === video.id)
-      );
-
-      // 3. Mettre à jour la liste principale et le nextPageToken
-      cacheData.data = {
-        videos: uniqueVideos,
-        nextPageToken: data.nextPageToken,
-      };
-      cacheData.timestamp = Date.now();
-
-      // 4. Enregistrer également cette page spécifique
-      cacheData.pageTokens[pageToken] = {
-        videos: uniqueVideos,
-        nextPageToken: data.nextPageToken,
-      };
-    } else {
-      // Création d'un nouveau cache
-      cacheData = {
-        data,
-        timestamp: Date.now(),
-        pageTokens: {},
-      };
-      // Enregistrer la page dans pageTokens
-      cacheData.pageTokens[pageToken] = data;
-    }
-
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-  } catch {
-    clearCache();
-  }
-}
-
-/* --------------------------------------------------
-   3. FONCTION DE REQUÊTE GLOBALE À L'API YOUTUBE
--------------------------------------------------- */
-const DEFAULT_HEADERS = {
-  Accept: "application/json",
-  Origin: window.location.origin,
-  Referer: `${window.location.origin}/`,
+const DURATION_REGEX = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+const CACHE_KEY = "yt_v3_cache";
+const CACHE_TTL = 14400000;
+const API_ENDPOINTS = {
+  VIDEOS: "https://www.googleapis.com/youtube/v3/videos",
+  SEARCH: "https://www.googleapis.com/youtube/v3/search",
+  CHANNELS: "https://www.googleapis.com/youtube/v3/channels",
 };
 
-async function makeYoutubeRequest(url: string) {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: DEFAULT_HEADERS,
-    mode: "cors",
-    credentials: "omit",
+interface CacheState {
+  videosMap: Record<string, Video>;
+  pageMap: Record<string, string[]>;
+  timestamp: number;
+}
+
+function formatDuration(duration: string): string {
+  const { H = 0, M = 0, S = 0 } = duration.match(DURATION_REGEX)?.groups || {};
+  return [Number(H) > 0 ? H : null, String(M).padStart(Number(H) > 0 ? 2 : 1, "0"), String(S).padStart(2, "0")]
+    .filter(Boolean)
+    .join(":");
+}
+
+function createCacheManager() {
+  const getCache = (): CacheState | null => {
+    try {
+      const data = localStorage.getItem(CACHE_KEY);
+      return data && Date.now() - JSON.parse(data).timestamp < CACHE_TTL
+        ? JSON.parse(data)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveCache = (videos: Video[], _nextToken?: string, pageToken = "") => {
+    const cache = getCache() || { videosMap: {}, pageMap: {}, timestamp: 0 };
+    const newMap = videos.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
+
+    cache.videosMap = { ...cache.videosMap, ...newMap };
+    cache.pageMap[pageToken] = videos.map((v) => v.id);
+    cache.timestamp = Date.now();
+
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch {
+      localStorage.removeItem(CACHE_KEY);
+    }
+  };
+
+  const loadCache = (pageToken = ""): VideosResponse | null => {
+    const cache = getCache();
+    if (!cache) return null;
+
+    const videoIds = cache.pageMap[pageToken] || Object.values(cache.pageMap).flat();
+    return {
+      videos: Array.from(new Set(videoIds)).map((id) => cache.videosMap[id]),
+      nextPageToken: Object.keys(cache.pageMap).find((k) => k !== pageToken),
+    };
+  };
+
+  return { saveCache, loadCache };
+}
+
+const { saveCache, loadCache } = createCacheManager();
+
+async function fetchAPI<T>(url: URL, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url.toString(), {
+    headers: { Accept: "application/json" },
+    signal,
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    const errorMessage =
-      errorData?.error?.message || `Error: ${response.status}`;
-    throw new Error(errorMessage);
+    const error = await response.json().catch(() => ({ error: { message: response.status } }));
+    throw new Error(error.error.message);
   }
+
   return response.json();
 }
 
-/* --------------------------------------------------
-   4. RÉCUPÉRER LES DÉTAILS D'UNE VIDÉO PAR ID
--------------------------------------------------- */
-async function getVideoById(
-  videoId: string,
-  apiKey: string
-): Promise<Video | null> {
+async function fetchVideoDetails(ids: string[], apiKey: string, signal?: AbortSignal) {
+  if (!ids.length) return [];
+
+  const url = new URL(API_ENDPOINTS.VIDEOS);
+  url.searchParams.set("part", "snippet,contentDetails,statistics");
+  url.searchParams.set("id", ids.join(","));
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("fields", "items(id,snippet,contentDetails/duration,statistics)");
+
+  const data = await fetchAPI<{ items: any[] }>(url, signal);
+  return data.items || [];
+}
+
+async function fetchChannelAvatars(ids: string[], apiKey: string, signal?: AbortSignal) {
+  if (!ids.length) return new Map<string, string>();
+
+  const url = new URL(API_ENDPOINTS.CHANNELS);
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("id", ids.join(","));
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("fields", "items(id,snippet/thumbnails/default/url)");
+
   try {
-    const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    videoUrl.searchParams.append("part", "snippet,contentDetails,statistics");
-    videoUrl.searchParams.append("id", videoId);
-    videoUrl.searchParams.append("key", apiKey);
-
-    const videoData = await makeYoutubeRequest(videoUrl.toString());
-    if (!videoData.items || videoData.items.length === 0) {
-      return null;
-    }
-
-    const item = videoData.items[0];
-    const channelId = item.snippet.channelId;
-
-    // Récupérer la miniature de la chaîne
-    const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-    channelUrl.searchParams.append("part", "snippet");
-    channelUrl.searchParams.append("id", channelId);
-    channelUrl.searchParams.append("key", apiKey);
-
-    const channelData = await makeYoutubeRequest(channelUrl.toString());
-    const channelThumbnailUrl =
-      channelData.items?.[0]?.snippet?.thumbnails?.default?.url;
-
-    return {
-      id: item.id,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnailUrl:
-        item.snippet.thumbnails.maxres?.url ||
-        item.snippet.thumbnails.high?.url ||
-        item.snippet.thumbnails.medium?.url,
-      channelTitle: item.snippet.channelTitle,
-      channelId: channelId,
-      channelThumbnailUrl,
-      duration: formatYoutubeDuration(item.contentDetails.duration),
-      viewCount: item.statistics.viewCount,
-      publishedAt: item.snippet.publishedAt,
-      likeCount: item.statistics.likeCount,
-    };
+    const data = await fetchAPI<{ items: any[] }>(url, signal);
+    return new Map(data.items?.map((c) => [c.id, c.snippet.thumbnails?.default?.url]));
   } catch {
-    return null;
+    return new Map();
   }
 }
 
-/* --------------------------------------------------
-   5. RÉCUPÉRER LES VIDÉOS "SPACE ENGINEERS 2"
--------------------------------------------------- */
 export async function getSpaceEngineers2Videos(
   pageToken = "",
-  requestedVideoId?: string
+  requestedId?: string
 ): Promise<VideosResponse> {
   const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("API_KEY_MISSING");
 
-  // 5.1 - Cas d'une vidéo spécifique
-  if (requestedVideoId) {
-    const video = await getVideoById(requestedVideoId, apiKey);
-    if (video) {
-      // Récupérer quelques vidéos supplémentaires pour recommandations
+  if (requestedId) {
+    try {
+      const video = await getVideoById(requestedId, apiKey);
+      if (!video) throw new Error("VIDEO_NOT_FOUND");
+      
       const response = await getSpaceEngineers2Videos();
       return {
-        videos: [video, ...response.videos.filter((v) => v.id !== requestedVideoId)],
+        videos: [video, ...response.videos.filter((v) => v.id !== requestedId)],
         nextPageToken: response.nextPageToken,
       };
+    } catch {
+      return { videos: [], nextPageToken: undefined };
     }
   }
 
-  // 5.2 - Vérifier le cache uniquement si pas de vidéo spécifique
-  if (!requestedVideoId) {
-    const cachedData = loadCache(pageToken);
-    if (cachedData) {
-      // On retourne immédiatement le cache
-      return cachedData;
-    }
-  }
-
-  // 5.3 - Pas de cache ou besoin de données fraîches
-  const maxResults = requestedVideoId ? 50 : 12;
+  const cached = loadCache(pageToken);
+  if (cached) return cached;
 
   try {
-    const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-    searchUrl.searchParams.append("part", "snippet");
-    searchUrl.searchParams.append("q", '"Space Engineers 2" gameplay');
-    searchUrl.searchParams.append("type", "video");
-    searchUrl.searchParams.append("maxResults", maxResults.toString());
-    searchUrl.searchParams.append("key", apiKey);
+    const controller = new AbortController();
+    const searchUrl = new URL(API_ENDPOINTS.SEARCH);
+    searchUrl.searchParams.set("part", "snippet");
+    searchUrl.searchParams.set("q", "Space Engineers 2 gameplay");
+    searchUrl.searchParams.set("type", "video");
+    searchUrl.searchParams.set("maxResults", "50");
+    searchUrl.searchParams.set("key", apiKey);
+    searchUrl.searchParams.set("pageToken", pageToken);
+    searchUrl.searchParams.set("fields", "items(id/videoId),nextPageToken");
 
-    if (requestedVideoId) {
-      searchUrl.searchParams.append("order", "date");
-    }
+    const searchData = await fetchAPI<{ items: any[]; nextPageToken?: string }>(searchUrl, controller.signal);
+    const videoIds = searchData.items?.map((i) => i.id.videoId).filter(Boolean) || [];
+    
+    if (!videoIds.length) return { videos: [], nextPageToken: undefined };
 
-    if (pageToken) {
-      searchUrl.searchParams.append("pageToken", pageToken);
-    }
+    const details = await fetchVideoDetails(videoIds, apiKey, controller.signal);
+    const channelIds = [...new Set(details.map((d) => d.snippet?.channelId).filter(Boolean))];
+    const avatars = await fetchChannelAvatars(channelIds, apiKey, controller.signal);
 
-    const searchData = await makeYoutubeRequest(searchUrl.toString());
-    if (!searchData.items || searchData.items.length === 0) {
-      return { videos: [], nextPageToken: undefined };
-    }
+    const videos = details.map((item) => ({
+      id: item.id,
+      title: item.snippet.title,
+      description: item.snippet.description || "",
+      thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url,
+      channelTitle: item.snippet.channelTitle,
+      channelId: item.snippet.channelId,
+      channelThumbnailUrl: avatars.get(item.snippet.channelId),
+      duration: formatDuration(item.contentDetails?.duration || "PT0S"),
+      viewCount: item.statistics?.viewCount || "0",
+      publishedAt: item.snippet.publishedAt,
+      likeCount: item.statistics?.likeCount || "0",
+    })).filter((v) => v.thumbnailUrl);
 
-    const videoIds = searchData.items
-      .filter((item: any) => item.id && item.id.videoId)
-      .map((item: any) => item.id.videoId)
-      .join(",");
+    saveCache(videos, searchData.nextPageToken, pageToken);
+    return { videos, nextPageToken: searchData.nextPageToken };
 
-    if (!videoIds) {
-      return { videos: [], nextPageToken: undefined };
-    }
-
-    const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    detailsUrl.searchParams.append("part", "snippet,contentDetails,statistics");
-    detailsUrl.searchParams.append("id", videoIds);
-    detailsUrl.searchParams.append("key", apiKey);
-    detailsUrl.searchParams.append(
-      "fields",
-      "items(id,snippet(title,description,thumbnails,channelTitle,channelId,publishedAt),contentDetails/duration,statistics(viewCount,likeCount))"
-    );
-
-    const detailsData = await makeYoutubeRequest(detailsUrl.toString());
-    if (!detailsData.items || detailsData.items.length === 0) {
-      return { videos: [], nextPageToken: undefined };
-    }
-
-    // Récupération des miniatures de chaînes
-    const channelIds = [
-      ...new Set(
-        detailsData.items
-          .filter((item: any) => item.snippet?.channelId)
-          .map((item: any) => item.snippet.channelId)
-      ),
-    ].join(",");
-
-    let channelAvatars = new Map();
-    if (channelIds) {
-      const channelsUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-      channelsUrl.searchParams.append("part", "snippet");
-      channelsUrl.searchParams.append("id", channelIds);
-      channelsUrl.searchParams.append("key", apiKey);
-      channelsUrl.searchParams.append("fields", "items(id,snippet/thumbnails)");
-
-      try {
-        const channelsData = await makeYoutubeRequest(channelsUrl.toString());
-        if (channelsData.items) {
-          channelAvatars = new Map(
-            channelsData.items.map((channel: any) => [
-              channel.id,
-              channel.snippet.thumbnails?.default?.url ||
-                channel.snippet.thumbnails?.medium?.url ||
-                undefined,
-            ])
-          );
-        }
-      } catch {
-        // on continue sans avatars
-      }
-    }
-
-    // Conversion en format Video
-    const videos: Video[] = detailsData.items
-      .filter((item: any) => {
-        return (
-          item.id &&
-          item.snippet?.title &&
-          item.snippet?.channelTitle &&
-          item.snippet?.channelId &&
-          (item.snippet?.thumbnails?.high?.url ||
-            item.snippet?.thumbnails?.medium?.url)
-        );
-      })
-      .map((item: any) => ({
-        id: item.id,
-        title: item.snippet.title,
-        description: item.snippet.description || "",
-        thumbnailUrl:
-          item.snippet.thumbnails.maxres?.url ||
-          item.snippet.thumbnails.high?.url ||
-          item.snippet.thumbnails.medium?.url ||
-          item.snippet.thumbnails.default?.url,
-        channelTitle: item.snippet.channelTitle,
-        channelId: item.snippet.channelId,
-        channelThumbnailUrl: channelAvatars.get(item.snippet.channelId),
-        duration: formatYoutubeDuration(item.contentDetails?.duration || "PT0S"),
-        viewCount: item.statistics?.viewCount || "0",
-        publishedAt: item.snippet.publishedAt,
-        likeCount: item.statistics?.likeCount || "0",
-      }));
-
-    const response: VideosResponse = {
-      videos,
-      nextPageToken: searchData.nextPageToken,
-    };
-
-    // On stocke TOUTES les pages (y compris pageToken) dans le cache
-    saveCache(response, pageToken);
-
-    return response;
   } catch (error) {
-    // Vérifie si c'est un problème de quota
-    if (
-      error instanceof Error &&
-      (error.message.includes("quota") || error.message.includes("403"))
-    ) {
-      const cachedData = loadCache(pageToken);
-      if (cachedData) {
-        return cachedData;
-      }
+    if (error instanceof Error && error.message.includes("quota exceeded")) {
+      const fallback = loadCache(pageToken);
+      return fallback || { videos: [], nextPageToken: undefined };
     }
     throw error;
+  }
+}
+
+async function getVideoById(id: string, apiKey: string): Promise<Video | null> {
+  try {
+    const [video] = await fetchVideoDetails([id], apiKey);
+    if (!video) return null;
+
+    const avatars = await fetchChannelAvatars([video.snippet.channelId], apiKey);
+    return {
+      id: video.id,
+      title: video.snippet.title,
+      description: video.snippet.description,
+      thumbnailUrl: video.snippet.thumbnails?.maxres?.url || video.snippet.thumbnails?.high?.url,
+      channelTitle: video.snippet.channelTitle,
+      channelId: video.snippet.channelId,
+      channelThumbnailUrl: avatars.get(video.snippet.channelId),
+      duration: formatDuration(video.contentDetails.duration),
+      viewCount: video.statistics.viewCount,
+      publishedAt: video.snippet.publishedAt,
+      likeCount: video.statistics.likeCount,
+    };
+  } catch {
+    return null;
   }
 }
