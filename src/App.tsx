@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
 import { Hero } from './components/Hero'
 import { CommunityGallery } from './components/CommunityGallery'
@@ -20,7 +20,7 @@ const HomePage: React.FC = () => (
 )
 
 const App: React.FC = () => (
-  <HashRouter>
+  <BrowserRouter>
     <div className="app">
       <Navbar />
       <Routes>
@@ -33,6 +33,6 @@ const App: React.FC = () => (
       </Routes>
       <Footer />
     </div>
-  </HashRouter>
+  </BrowserRouter>
 )
 export default App
