@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "predeploy" : "npm run build",
     "deploy" : "gh-pages -d dist",
-    "homepage": "https://klfd9.github.io/"
+    "homepage": "https://klfd9.github.io/se2hub"
   },
   "dependencies": {
     "@tippyjs/react": "^4.2.6",
