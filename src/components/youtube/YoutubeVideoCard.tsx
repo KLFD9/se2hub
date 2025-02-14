@@ -1,10 +1,12 @@
 // src/components/youtube/YoutubeVideoCard.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Video } from '../../types/Video';
 import '../../styles/pages/Youtube.css';
 
 interface YoutubeVideoCardProps {
   video: Video;
+  compact?: boolean;
 }
 
 // Fonctions de formatage (inchangées)
@@ -35,7 +37,8 @@ function timeAgo(date: string): string {
   return `il y a quelques secondes`;
 }
 
-const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
+const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video, compact = false }) => {
+  const navigate = useNavigate();
   const [avatarError, setAvatarError] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   
@@ -59,14 +62,18 @@ const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
 
   const handleCardClick = () => {
     if (video?.id) {
-      window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank');
+      navigate(`/video/${video.id}`);
     }
   };
 
   if (!video) return null;
 
   return (
-    <div className="youtube-video-card" onClick={handleCardClick} style={{cursor: 'pointer'}}>
+    <div 
+      className={`youtube-video-card ${compact ? 'compact' : ''}`} 
+      onClick={handleCardClick} 
+      style={{cursor: 'pointer'}}
+    >
       <div className="card-thumbnail-container">
         <img 
           className="card-thumbnail" 
@@ -74,17 +81,20 @@ const YoutubeVideoCard: React.FC<YoutubeVideoCardProps> = ({ video }) => {
           alt={`Miniature de la vidéo : ${video.title}`} 
           onError={handleThumbnailError}
           loading="lazy" 
+          style={{ display: 'block' }}
         />
         <span className="card-duration">{video.duration || '00:00'}</span>
       </div>
       <div className="card-info">
-        <img 
-          className="channel-avatar" 
-          src={avatarSrc}
-          alt={`Logo de la chaîne ${video.channelTitle}`} 
-          onError={handleAvatarError}
-          loading="lazy"
-        />
+        {!compact && (
+          <img 
+            className="channel-avatar" 
+            src={avatarSrc}
+            alt={`Logo de la chaîne ${video.channelTitle}`} 
+            onError={handleAvatarError}
+            loading="lazy"
+          />
+        )}
         <div className="video-details">
           <h3 className="video-card-title" title={video.title || ''}>{video.title || 'Sans titre'}</h3>
           <div className="card-meta">

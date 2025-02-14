@@ -8,6 +8,7 @@ import { OpenSourceBanner } from './components/OpenSourceBanner'
 import SpaceflixPage from './pages/SpaceflixPage'
 import ToolsPage from './pages/ToolsPage'
 import SpaceCalcPage from './pages/SpaceCalcPage'
+import VideoPage from './pages/VideoPage'
 import './styles/App.css'
 import React from 'react'
 
@@ -28,6 +29,7 @@ const App: React.FC = () => (
         <Route path="/gallery" element={<CommunityGallery />} />
         <Route path="/article/:id" element={<ArticlePage />} />
         <Route path="/spaceflix" element={<SpaceflixPage />} />
+        <Route path="/video/:videoId" element={<VideoPage />} />
         <Route path="/tools" element={<ToolsPage />} />
         <Route path="/tools/spacecalc" element={<SpaceCalcPage />} />
       </Routes>

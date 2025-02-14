@@ -17,7 +17,41 @@
     display: flex;
     flex-direction: column;
 }
-  
+
+.youtube-video-card.compact {
+    display: flex;
+    gap: 12px;
+    height: 94px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.youtube-video-card.compact .card-thumbnail-container {
+    width: 168px;
+    min-width: 168px;
+    height: 94px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #000;
+}
+
+.youtube-video-card.compact .card-thumbnail {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.01); /* évite les bordures blanches potentielles */
+}
+
+.youtube-video-card.compact .card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .youtube-video-card:hover {
     transform: translateY(-6px);
 }
@@ -198,4 +232,3 @@
     width: 40%;
     margin-top: 0.25rem;
 }
-  

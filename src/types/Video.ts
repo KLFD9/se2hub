@@ -10,4 +10,6 @@ export interface Video {
   duration: string;
   viewCount: string;
   publishedAt: string;
+  subscriberCount?: string;
+  likeCount: string;
 }
