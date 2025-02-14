@@ -20,7 +20,7 @@ const HomePage: React.FC = () => (
 )
 
 const App: React.FC = () => (
-  <HashRouter basename="/se2hub">
+  <HashRouter>
     <div className="app">
       <Navbar />
       <Routes>
@@ -35,5 +35,4 @@ const App: React.FC = () => (
     </div>
   </HashRouter>
 )
-
 export default App
