@@ -11,33 +11,29 @@ import SpaceCalcPage from './pages/SpaceCalcPage'
 import './styles/App.css'
 import React from 'react'
 
-const HomePage: React.FC = () => {
-  return (
-    <main>
-      <Hero />
-      <OpenSourceBanner />
-      <section className="social-section" id="social-section"></section>
-    </main>
-  )
-}
+const HomePage: React.FC = () => (
+  <main>
+    <Hero />
+    <OpenSourceBanner />
+    <section className="social-section" id="social-section"></section>
+  </main>
+)
 
-const App: React.FC = () => {
-  return (
-    <HashRouter basename="/se2hub">
-      <div className="app">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/gallery" element={<CommunityGallery />} />
-          <Route path="/article/:id" element={<ArticlePage />} />
-          <Route path="/spaceflix" element={<SpaceflixPage />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/tools/spacecalc" element={<SpaceCalcPage />} />
-        </Routes>
-        <Footer />
-      </div>
-    </HashRouter>
-  )
-}
+const App: React.FC = () => (
+  <HashRouter basename="/se2hub">
+    <div className="app">
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/gallery" element={<CommunityGallery />} />
+        <Route path="/article/:id" element={<ArticlePage />} />
+        <Route path="/spaceflix" element={<SpaceflixPage />} />
+        <Route path="/tools" element={<ToolsPage />} />
+        <Route path="/tools/spacecalc" element={<SpaceCalcPage />} />
+      </Routes>
+      <Footer />
+    </div>
+  </HashRouter>
+)
 
 export default App
