@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-// import { NodeJS } from 'node';
 import { Video } from '../../types/Video';
 import { getSpaceEngineers2Videos, VideosResponse } from '../../services/youtubeService';
 import YoutubeVideoCard from './YoutubeVideoCard';
@@ -8,57 +7,72 @@ import '../../styles/pages/Youtube.css';
 
 const YoutubeVideos: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
-  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const [quotaError, setQuotaError] = useState<boolean>(false);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>();
+  const [lastFetchedToken, setLastFetchedToken] = useState<string | null>(null);
+
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [isQuotaError, setIsQuotaError] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
-  
+
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const loadVideos = useCallback(async (pageToken: string = '', reset: boolean = false) => {
-    if (quotaError || (!reset && !hasMore)) return;
-    
-    if (reset) {
-      setLoading(true);
-      setHasMore(true);
-    } else {
-      setLoadingMore(true);
-    }
+  const fetchVideos = useCallback(
+    async (pageToken: string = '', reset = false) => {
+      if (isQuotaError || (!reset && !hasMore)) return;
 
-    try {
-      const response: VideosResponse = await getSpaceEngineers2Videos(pageToken);
-      
-      setVideos(prev => reset ? response.videos : [...prev, ...response.videos]);
-      setNextPageToken(response.nextPageToken);
-      setHasMore(!!response.nextPageToken && response.videos.length > 0);
-      setQuotaError(false);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('quota')) {
-        setQuotaError(true);
+      if (reset) {
+        setIsInitialLoading(true);
+        setHasMore(true);
+      } else {
+        setIsLoadingMore(true);
       }
-      console.error('Error loading videos:', error);
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [quotaError, hasMore]);
+
+      try {
+        const response: VideosResponse = await getSpaceEngineers2Videos(pageToken);
+
+        setVideos((prev) => {
+          const combined = reset ? response.videos : [...prev, ...response.videos];
+          const unique = combined.filter(
+            (video, index, self) => self.findIndex((v) => v.id === video.id) === index
+          );
+          return unique;
+        });
+
+        setNextPageToken(response.nextPageToken);
+
+        const canContinue = !!response.nextPageToken && response.videos.length > 0;
+        if (response.nextPageToken && response.nextPageToken === lastFetchedToken) {
+          setHasMore(false);
+        } else {
+          setHasMore(canContinue);
+          setLastFetchedToken(response.nextPageToken || null);
+        }
+
+        setIsQuotaError(false);
+      } catch {
+        setIsQuotaError(true);
+        setHasMore(false);
+      } finally {
+        setIsInitialLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [isQuotaError, hasMore, lastFetchedToken]
+  );
 
   useEffect(() => {
-    loadVideos();
-    // Cleanup function to avoid memory leaks
+    fetchVideos('', true);
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
     };
-  }, []);
+  }, [fetchVideos]);
 
-  // Infinite Scroll with debounce
   useEffect(() => {
-    if (!hasMore || loadingMore || loading) {
+    if (!hasMore || isLoadingMore || isInitialLoading) {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
@@ -66,40 +80,45 @@ const YoutubeVideos: React.FC = () => {
     }
 
     let timeoutId: ReturnType<typeof setTimeout>;
-    
-    observerRef.current = new IntersectionObserver(entries => {
-      const entry = entries[0];
-      if (entry.isIntersecting && nextPageToken) {
-        // Add debounce to prevent multiple calls
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          loadVideos(nextPageToken);
-        }, 500);
-      }
-    }, { threshold: 0.5 });
-    
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && nextPageToken) {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            fetchVideos(nextPageToken);
+          }, 500);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
     if (sentinelRef.current) {
       observerRef.current.observe(sentinelRef.current);
     }
-    
+
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
       clearTimeout(timeoutId);
     };
-  }, [nextPageToken, loadingMore, loading, hasMore, loadVideos]);
+  }, [nextPageToken, isLoadingMore, isInitialLoading, hasMore, fetchVideos]);
+
   return (
     <>
-      {quotaError && (
-        <div style={{ 
-          padding: '1rem', 
-          margin: '1rem', 
-          backgroundColor: '#fff3cd', 
-          color: '#856404', 
-          borderRadius: '4px',
-          textAlign: 'center' 
-        }}>
+      {isQuotaError && (
+        <div
+          style={{
+            padding: '1rem',
+            margin: '1rem',
+            backgroundColor: '#fff3cd',
+            color: '#856404',
+            borderRadius: '4px',
+            textAlign: 'center',
+          }}
+        >
           Le quota d'appels à l'API YouTube a été dépassé. Veuillez réessayer plus tard ou contacter l'administrateur.
         </div>
       )}
@@ -108,23 +127,26 @@ const YoutubeVideos: React.FC = () => {
         {videos.map((video, index) => (
           <YoutubeVideoCard key={`${video.id}-${index}`} video={video} />
         ))}
-        
-        {(loading || loadingMore) && [...Array(4)].map((_, index) => (
-          <YoutubeVideoCardSkeleton key={`skeleton-${index}`} />
-        ))}
 
-        {!loading && !loadingMore && !hasMore && videos.length > 0 && (
-          <div style={{ 
-            gridColumn: '1/-1', 
-            textAlign: 'center', 
-            padding: '1rem',
-            color: '#666' 
-          }}>
+        {(isInitialLoading || isLoadingMore) &&
+          Array.from({ length: 4 }).map((_, index) => (
+            <YoutubeVideoCardSkeleton key={`skeleton-${index}`} />
+          ))}
+
+        {!isInitialLoading && !isLoadingMore && !hasMore && videos.length > 0 && (
+          <div
+            style={{
+              gridColumn: '1/-1',
+              textAlign: 'center',
+              padding: '1rem',
+              color: '#666',
+            }}
+          >
             Fin des résultats
           </div>
         )}
 
-        {hasMore && <div ref={sentinelRef} style={{ height: '1px' }}></div>}
+        {hasMore && <div ref={sentinelRef} style={{ height: '1px' }} />}
       </div>
     </>
   );
