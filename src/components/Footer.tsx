@@ -26,19 +26,19 @@ const footerSections: FooterSection[] = [
   {
     title: "Ressources",
     links: [
-      { label: "Wiki Communautaire", href: "#wiki", ariaLabel: "Accéder au wiki communautaire" },
-      { label: "Mods Populaires", href: "#mods", ariaLabel: "Découvrir les mods populaires" },
-      { label: "Blueprints", href: "#blueprints", ariaLabel: "Explorer les blueprints" },
-      { label: "Scripts", href: "#scripts", ariaLabel: "Voir les scripts disponibles" }
+      { label: "Wiki Communautaire", href: "#", ariaLabel: "Accéder au wiki communautaire" },
+      { label: "Mods Populaires", href: "#", ariaLabel: "Découvrir les mods populaires" },
+      { label: "Blueprints", href: "#", ariaLabel: "Explorer les blueprints" },
+      { label: "Scripts", href: "#", ariaLabel: "Voir les scripts disponibles" }
     ]
   },
   {
     title: "Communauté",
     links: [
-      { label: "FAQ", href: "#faq", ariaLabel: "Consulter la FAQ" },
-      { label: "Contact", href: "#contact", ariaLabel: "Nous contacter" },
-      { label: "Règles", href: "#rules", ariaLabel: "Lire les règles" },
-      { label: "Notre Équipe", href: "#team", ariaLabel: "Découvrir notre équipe" }
+      { label: "FAQ", href: "#", ariaLabel: "Consulter la FAQ" },
+      { label: "Contact", href: "#", ariaLabel: "Nous contacter" },
+      { label: "Règles", href: "#", ariaLabel: "Lire les règles" },
+      { label: "Notre Équipe", href: "#", ariaLabel: "Découvrir notre équipe" }
     ]
   }
 ]
