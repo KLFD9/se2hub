@@ -31,6 +31,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
     return <div className="video-player-container">Vidéo non trouvée</div>;
   }
 
+  const handleChannelClick = (channelId?: string) => {
+    if (channelId) {
+      window.open(`https://www.youtube.com/channel/${channelId}`, '_blank');
+    }
+  };
+
   return (
     <div className="video-player-container">
       <div className="video-wrapper">
@@ -55,10 +61,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
                     src={video.channelThumbnailUrl} 
                     alt={`Chaîne ${video.channelTitle}`}
                     loading="lazy"
+                    onClick={() => handleChannelClick(video.channelId)}
+                    className="channel-thumbnail"
                   />
                 )}
                 <div className="channel-details">
-                  <span className="channel-name">{video.channelTitle}</span>
+                  <span 
+                    className="channel-name"
+                    onClick={() => handleChannelClick(video.channelId)}
+                  >
+                    {video.channelTitle}
+                  </span>
                   {video.subscriberCount && (
                     <span className="subscriber-count">
                       {formatSubscriberCount(video.subscriberCount)}

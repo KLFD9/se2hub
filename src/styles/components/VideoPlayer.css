@@ -136,7 +136,7 @@
 .video-title {
   font-size: 24px;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #bcc7d3;
   margin: 0;
   line-height: 1.4;
 }
@@ -172,6 +172,14 @@
   font-weight: 600;
   color: #fff;
   font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  text-decoration: none;
+}
+
+.channel-name:hover {
+  opacity: 0.8;
+  color: var(--primary-color);
 }
 
 .subscriber-count {
@@ -195,4 +203,13 @@
   line-height: 1.6;
   color: var(--text-description);
   font-size: 14px;
+}
+
+.channel-thumbnail {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.channel-thumbnail:hover {
+  opacity: 0.8;
 }
