@@ -25,7 +25,7 @@ const HomePage: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <BrowserRouter basename="/se2hub">
       <div className="app">
         <Navbar />
         <Routes>
@@ -38,7 +38,7 @@ const App: React.FC = () => {
         </Routes>
         <Footer />
       </div>
-    </Router>
+    </BrowserRouter>
   );
 };
 
