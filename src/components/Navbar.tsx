@@ -61,7 +61,7 @@ export const Navbar = () => {
                 </div>
               )
             })}
-            <a href="#" className="github-cta">
+            <a href="https://github.com/KLFD9/se2hub" className="github-cta">
               <FaGithub className="github-icon" />
               <span>Contribuer</span>
             </a>

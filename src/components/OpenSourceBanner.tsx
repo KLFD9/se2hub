@@ -10,7 +10,7 @@ export const OpenSourceBanner = () => {
           Engineers Hub est un projet open source. Vos idées, contributions et suggestions sont les bienvenues pour faire évoluer la plateforme ensemble.
         </p>
         <a
-          href="https://github.com/votre-repo/engineers-hub"
+          href="https://github.com/KLFD9/se2hub"
           target="_blank"
           rel="noopener noreferrer"
           className="github-button"
