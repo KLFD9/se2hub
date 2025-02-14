@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="800px" viewBox="0 0 800 800" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <!-- Gradient principal de la planète avec effet de profondeur -->
+        <radialGradient id="planetGradient" cx="35%" cy="35%" r="65%" fx="35%" fy="35%">
+            <stop offset="0%" style="stop-color:#4A9EFF;stop-opacity:0.4"/>
+            <stop offset="40%" style="stop-color:#4A9EFF;stop-opacity:0.2"/>
+            <stop offset="80%" style="stop-color:#4A9EFF;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#4A9EFF;stop-opacity:0"/>
+        </radialGradient>
+
+        <!-- Gradient pour l'effet de lumière -->
+        <radialGradient id="lightGradient" cx="30%" cy="30%" r="70%" fx="30%" fy="30%">
+            <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.2"/>
+            <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0"/>
+        </radialGradient>
+
+        <!-- Gradient pour l'atmosphère -->
+        <radialGradient id="atmosphereGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="80%" style="stop-color:#66E3FF;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#66E3FF;stop-opacity:0"/>
+        </radialGradient>
+
+        <!-- Gradient pour les anneaux -->
+        <linearGradient id="ringGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%" style="stop-color:#4A9EFF;stop-opacity:0"/>
+            <stop offset="20%" style="stop-color:#4A9EFF;stop-opacity:0.2"/>
+            <stop offset="50%" style="stop-color:#4A9EFF;stop-opacity:0.3"/>
+            <stop offset="80%" style="stop-color:#4A9EFF;stop-opacity:0.2"/>
+            <stop offset="100%" style="stop-color:#4A9EFF;stop-opacity:0"/>
+        </linearGradient>
+
+        <!-- Masque pour l'ombre des anneaux -->
+        <mask id="ringMask">
+            <rect x="0" y="0" width="800" height="800" fill="white"/>
+            <ellipse cx="400" cy="400" rx="200" ry="200" fill="black"/>
+        </mask>
+    </defs>
+    
+    <!-- Anneaux de la planète -->
+    <g transform="rotate(-25, 400, 400)">
+        <!-- Anneaux arrière (masqués par la planète) -->
+        <g mask="url(#ringMask)">
+            <ellipse cx="400" cy="400" rx="380" ry="60" 
+                style="fill:none;stroke:url(#ringGradient);stroke-width:12;opacity:0.3"/>
+            <ellipse cx="400" cy="400" rx="350" ry="55" 
+                style="fill:none;stroke:url(#ringGradient);stroke-width:10;opacity:0.25"/>
+            <ellipse cx="400" cy="400" rx="320" ry="50" 
+                style="fill:none;stroke:url(#ringGradient);stroke-width:8;opacity:0.2"/>
+        </g>
+        
+        <!-- Anneaux avant -->
+        <ellipse cx="400" cy="400" rx="380" ry="60" 
+            style="fill:none;stroke:url(#ringGradient);stroke-width:12;opacity:0.5"/>
+        <ellipse cx="400" cy="400" rx="350" ry="55" 
+            style="fill:none;stroke:url(#ringGradient);stroke-width:10;opacity:0.4"/>
+        <ellipse cx="400" cy="400" rx="320" ry="50" 
+            style="fill:none;stroke:url(#ringGradient);stroke-width:8;opacity:0.3"/>
+    </g>
+
+    <!-- Corps de la planète -->
+    <g>
+        <!-- Base de la planète -->
+        <circle cx="400" cy="400" r="200" 
+            style="fill:url(#planetGradient);stroke:none"/>
+        
+        <!-- Effet de lumière -->
+        <circle cx="400" cy="400" r="200" 
+            style="fill:url(#lightGradient);stroke:none"/>
+        
+        <!-- Atmosphère -->
+        <circle cx="400" cy="400" r="205" 
+            style="fill:url(#atmosphereGradient);stroke:none;filter:blur(5px)"/>
+        
+        <!-- Détails de surface -->
+        <g style="opacity:0.6">
+            <!-- Continents/Nuages -->
+            <path d="M300,350 Q350,320 400,350 T500,380" 
+                style="fill:none;stroke:rgba(255,255,255,0.2);stroke-width:3"/>
+            <path d="M320,450 Q370,420 420,440 T520,460" 
+                style="fill:none;stroke:rgba(255,255,255,0.15);stroke-width:3"/>
+            
+            <!-- Zones de relief -->
+            <path d="M280,380 C320,350 380,340 420,370" 
+                style="fill:none;stroke:rgba(102,227,255,0.1);stroke-width:20;filter:blur(8px)"/>
+            <path d="M350,420 C400,400 450,410 480,440" 
+                style="fill:none;stroke:rgba(102,227,255,0.1);stroke-width:15;filter:blur(6px)"/>
+        </g>
+    </g>
+</svg> 
