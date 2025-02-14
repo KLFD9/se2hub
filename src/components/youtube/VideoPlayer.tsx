@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Video } from '../../types/Video';
 import '../../styles/components/VideoPlayer.css';
@@ -26,10 +26,36 @@ const formatDate = (date: string) => {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   const { videoId } = useParams<{ videoId: string }>();
   const currentVideoId = video?.id || videoId;
+  const [isCinemaMode, setIsCinemaMode] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
+  useEffect(() => {
+    // Réinitialiser l'état d'erreur lors du changement de vidéo
+    setVideoError(false);
+    setRetryCount(0);
+  }, [currentVideoId]);
 
   if (!currentVideoId) {
-    return <div className="video-player-container">Vidéo non trouvée</div>;
+    return (
+      <div className="video-player-container error">
+        <div className="error-message">Vidéo non trouvée</div>
+      </div>
+    );
   }
+
+  const handleIframeError = () => {
+    if (retryCount < maxRetries) {
+      // Attendre un peu avant de réessayer
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+        setVideoError(false);
+      }, 1000 * (retryCount + 1));
+    } else {
+      setVideoError(true);
+    }
+  };
 
   const handleChannelClick = (channelId?: string) => {
     if (channelId) {
@@ -37,71 +63,107 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
     }
   };
 
-  return (
-    <div className="video-player-container">
-      <div className="video-wrapper">
-        <iframe
-          src={`https://www.youtube.com/embed/${currentVideoId}`}
-          title="YouTube video player"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+  const toggleCinemaMode = () => {
+    setIsCinemaMode(!isCinemaMode);
+    document.body.classList.toggle('cinema-mode');
+  };
+
+  if (videoError) {
+    return (
+      <div className="video-player-container error">
+        <div className="error-message">
+          Cette vidéo n'est pas disponible. Elle a peut-être été supprimée ou son accès est restreint.
+          <button 
+            onClick={() => {
+              setVideoError(false);
+              setRetryCount(0);
+            }}
+            className="retry-button"
+          >
+            Réessayer
+          </button>
+        </div>
       </div>
-      
-      {video && (
-        <div className="video-info">
-          <div className="video-header">
-            <h1 className="video-title">{video.title}</h1>
-            
-            <div className="video-meta-info">
-              <div className="channel-info">
-                {video.channelThumbnailUrl && (
-                  <img 
-                    src={video.channelThumbnailUrl} 
-                    alt={`Chaîne ${video.channelTitle}`}
-                    loading="lazy"
-                    onClick={() => handleChannelClick(video.channelId)}
-                    className="channel-thumbnail"
-                  />
-                )}
-                <div className="channel-details">
-                  <span 
-                    className="channel-name"
-                    onClick={() => handleChannelClick(video.channelId)}
-                  >
-                    {video.channelTitle}
-                  </span>
-                  {video.subscriberCount && (
-                    <span className="subscriber-count">
-                      {formatSubscriberCount(video.subscriberCount)}
+    );
+  }
+
+  return (
+    <>
+      <div className={`cinema-mode-overlay ${isCinemaMode ? 'active' : ''}`} />
+      <div className={`video-player-container ${isCinemaMode ? 'cinema-mode' : ''}`}>
+        <div className={`video-wrapper ${isCinemaMode ? 'cinema-mode' : ''}`}>
+          <iframe
+            key={`${currentVideoId}-${retryCount}`}
+            src={`https://www.youtube.com/embed/${currentVideoId}`}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            onError={handleIframeError}
+          />
+          <button 
+            className="cinema-mode-toggle"
+            onClick={toggleCinemaMode}
+            title={isCinemaMode ? "Désactiver le mode cinéma" : "Activer le mode cinéma"}
+          >
+            {isCinemaMode ? "Quitter le mode cinéma" : "Mode cinéma"}
+          </button>
+        </div>
+        
+        {video && (
+          <div className="video-info">
+            <div className="video-header">
+              <h1 className="video-title">{video.title}</h1>
+              
+              <div className="video-meta-info">
+                <div className="channel-info">
+                  {video.channelThumbnailUrl && (
+                    <img 
+                      src={video.channelThumbnailUrl} 
+                      alt={`Chaîne ${video.channelTitle}`}
+                      loading="lazy"
+                      onClick={() => handleChannelClick(video.channelId)}
+                      className="channel-thumbnail"
+                    />
+                  )}
+                  <div className="channel-details">
+                    <span 
+                      className="channel-name"
+                      onClick={() => handleChannelClick(video.channelId)}
+                    >
+                      {video.channelTitle}
                     </span>
+                    {video.subscriberCount && (
+                      <span className="subscriber-count">
+                        {formatSubscriberCount(video.subscriberCount)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="video-stats">
+                  {video.viewCount && (
+                    <span>{Number(video.viewCount).toLocaleString('fr-FR')} vues</span>
+                  )}
+                  {video.publishedAt && (
+                    <span>Publié le {formatDate(video.publishedAt)}</span>
+                  )}
+                  {video.likeCount && (
+                    <span>{Number(video.likeCount).toLocaleString('fr-FR')} likes</span>
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="video-stats">
-                {video.viewCount && (
-                  <span>{Number(video.viewCount).toLocaleString('fr-FR')} vues</span>
-                )}
-                {video.publishedAt && (
-                  <span>Publié le {formatDate(video.publishedAt)}</span>
-                )}
-                {video.likeCount && (
-                  <span>{Number(video.likeCount).toLocaleString('fr-FR')} likes</span>
-                )}
+            {video.description && (
+              <div className="video-description">
+                {video.description}
               </div>
-            </div>
+            )}
           </div>
-
-          {video.description && (
-            <div className="video-description">
-              {video.description}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 };
 

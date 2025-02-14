@@ -11,23 +11,51 @@ const VideoPage: React.FC = () => {
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [recommendedVideos, setRecommendedVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadVideos = async () => {
+    const loadVideos = async (forceRefresh: boolean = false) => {
+      if (!videoId) {
+        setError("ID de vidéo manquant");
+        return;
+      }
+
       try {
         setLoading(true);
-        const response = await getSpaceEngineers2Videos();
-        // Filtrer la vidéo actuelle
-        const filteredVideos = response.videos.filter((v) => v.id !== videoId);
-        setRecommendedVideos(filteredVideos.slice(0, 10));
+        setError(null);
 
-        // Trouver la vidéo actuelle
-        const current = response.videos.find((v) => v.id === videoId);
-        if (current) {
+        // Premier essai avec le cache
+        let response = await getSpaceEngineers2Videos('', videoId);
+        let current = response.videos.find((v) => v.id === videoId);
+
+        // Si la vidéo n'est pas trouvée et qu'on n'a pas encore forcé le rafraîchissement
+        if (!current && !forceRefresh) {
+          console.log("Vidéo non trouvée dans le cache, tentative de récupération depuis l'API...");
+          // Réessayer en forçant un rafraîchissement depuis l'API
+          response = await getSpaceEngineers2Videos('', videoId);
+          current = response.videos.find((v) => v.id === videoId);
+        }
+
+        if (!current) {
+          setError("Cette vidéo n'est pas disponible");
+          setCurrentVideo(null);
+        } else {
           setCurrentVideo(current);
+          // Mettre à jour les recommandations
+          const filteredVideos = response.videos
+            .filter((v) => v.id !== videoId)
+            .slice(0, 10);
+          setRecommendedVideos(filteredVideos);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des vidéos :', error);
+        if (!forceRefresh) {
+          // Si c'était le premier essai, réessayer avec forceRefresh
+          console.log("Tentative de rechargement forcé...");
+          await loadVideos(true);
+        } else {
+          setError("Une erreur est survenue lors du chargement de la vidéo");
+        }
       } finally {
         setLoading(false);
       }
@@ -35,6 +63,18 @@ const VideoPage: React.FC = () => {
 
     loadVideos();
   }, [videoId]);
+
+  if (error) {
+    return (
+      <div className="vp-page">
+        <div className="vp-player-section">
+          <div className="video-player-container error">
+            <div className="error-message">{error}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vp-page">
@@ -44,14 +84,13 @@ const VideoPage: React.FC = () => {
 
       <aside className="vp-sidebar">
         {loading ? (
-          /* Exemple de squelette de chargement */
           Array(4).fill(null).map((_, index) => (
             <div key={index} className="vp-skeleton">
               <div className="vp-skeleton-thumb"></div>
             </div>
           ))
         ) : (
-          <RecommendedVideos videos={recommendedVideos} />
+          recommendedVideos.length > 0 && <RecommendedVideos videos={recommendedVideos} />
         )}
       </aside>
     </div>

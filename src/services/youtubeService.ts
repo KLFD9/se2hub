@@ -31,21 +31,38 @@ interface CacheData {
   };
 }
 
-function loadCache(pageToken: string = ''): VideosResponse | null {
+function invalidateCache() {
+  localStorage.removeItem(CACHE_KEY);
+}
+
+function loadCache(pageToken: string = '', videoId?: string): VideosResponse | null {
   const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    const parsedCache = JSON.parse(cached) as CacheData;
-    if (Date.now() - parsedCache.timestamp < CACHE_DURATION) {
-      if (pageToken && parsedCache.pageTokens[pageToken]) {
-        return parsedCache.pageTokens[pageToken];
-      } else if (!pageToken) {
-        return parsedCache.data;
-      }
-    } else {
-      localStorage.removeItem(CACHE_KEY);
+  if (!cached) return null;
+
+  const parsedCache = JSON.parse(cached) as CacheData;
+  if (Date.now() - parsedCache.timestamp > CACHE_DURATION) {
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+
+  // Si on cherche une vidéo spécifique, vérifier qu'elle existe dans le cache
+  if (videoId) {
+    const videoInCache = parsedCache.data.videos.some(v => v.id === videoId) ||
+      Object.values(parsedCache.pageTokens).some(page => 
+        page.videos.some(v => v.id === videoId)
+      );
+    
+    // Si la vidéo n'est pas dans le cache, forcer un rechargement
+    if (!videoInCache) {
+      return null;
     }
   }
-  return null;
+
+  if (pageToken && parsedCache.pageTokens[pageToken]) {
+    return parsedCache.pageTokens[pageToken];
+  }
+  
+  return parsedCache.data;
 }
 
 function saveCache(data: VideosResponse, pageToken: string = ''): void {
@@ -57,7 +74,20 @@ function saveCache(data: VideosResponse, pageToken: string = ''): void {
     if (pageToken) {
       cacheData.pageTokens[pageToken] = data;
     } else {
-      cacheData.data = data;
+      // Fusionner les nouvelles vidéos avec les vidéos existantes
+      const existingVideos = JSON.parse(existing).data.videos;
+      const newVideos = data.videos;
+      
+      // Combiner et dédupliquer les vidéos
+      const allVideos = [...existingVideos, ...newVideos];
+      const uniqueVideos = allVideos.filter((video, index, self) =>
+        index === self.findIndex((v) => v.id === video.id)
+      );
+
+      cacheData.data = {
+        ...data,
+        videos: uniqueVideos
+      };
       cacheData.timestamp = Date.now();
     }
   } else {
@@ -68,7 +98,13 @@ function saveCache(data: VideosResponse, pageToken: string = ''): void {
     };
   }
 
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch (e) {
+    console.warn('Erreur lors de la sauvegarde du cache:', e);
+    // En cas d'erreur (stockage plein par exemple), on vide le cache
+    invalidateCache();
+  }
 }
 
 const DEFAULT_HEADERS = {
@@ -94,16 +130,79 @@ async function makeYoutubeRequest(url: string) {
   return response.json();
 }
 
-export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<VideosResponse> {
-  // Vérifier le cache
-  const cachedData = loadCache(pageToken);
-  if (cachedData) {
-    console.log("Returning cached data from localStorage", pageToken ? "for page token: " + pageToken : "for first page");
-    return cachedData;
+async function getVideoById(videoId: string, apiKey: string): Promise<Video | null> {
+  try {
+    const videoUrl = new URL('https://www.googleapis.com/youtube/v3/videos');
+    videoUrl.searchParams.append('part', 'snippet,contentDetails,statistics');
+    videoUrl.searchParams.append('id', videoId);
+    videoUrl.searchParams.append('key', apiKey);
+
+    const videoData = await makeYoutubeRequest(videoUrl.toString());
+    if (!videoData.items || videoData.items.length === 0) {
+      return null;
+    }
+
+    const item = videoData.items[0];
+    const channelId = item.snippet.channelId;
+
+    // Récupérer les informations de la chaîne
+    const channelUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+    channelUrl.searchParams.append('part', 'snippet');
+    channelUrl.searchParams.append('id', channelId);
+    channelUrl.searchParams.append('key', apiKey);
+
+    const channelData = await makeYoutubeRequest(channelUrl.toString());
+    const channelThumbnailUrl = channelData.items?.[0]?.snippet?.thumbnails?.default?.url;
+
+    return {
+      id: item.id,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnailUrl: item.snippet.thumbnails.maxres?.url || 
+                   item.snippet.thumbnails.high?.url || 
+                   item.snippet.thumbnails.medium?.url,
+      channelTitle: item.snippet.channelTitle,
+      channelId: channelId,
+      channelThumbnailUrl,
+      duration: formatDuration(item.contentDetails.duration),
+      viewCount: item.statistics.viewCount,
+      publishedAt: item.snippet.publishedAt,
+      likeCount: item.statistics.likeCount
+    };
+  } catch (error) {
+    console.error('Error fetching video by ID:', error);
+    return null;
+  }
+}
+
+export async function getSpaceEngineers2Videos(pageToken: string = '', requestedVideoId?: string): Promise<VideosResponse> {
+  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+
+  // Si on cherche une vidéo spécifique, essayer de la récupérer directement
+  if (requestedVideoId) {
+    const video = await getVideoById(requestedVideoId, apiKey);
+    if (video) {
+      // Récupérer quelques vidéos supplémentaires pour les recommandations
+      const response = await getSpaceEngineers2Videos();
+      return {
+        videos: [video, ...response.videos.filter(v => v.id !== requestedVideoId)],
+        nextPageToken: response.nextPageToken
+      };
+    }
   }
 
-  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-  const maxResults = 12;
+  // Vérifier le cache seulement si on ne cherche pas une vidéo spécifique
+  if (!requestedVideoId) {
+    const cachedData = loadCache(pageToken);
+    if (cachedData) {
+      console.log("Returning cached data");
+      return cachedData;
+    }
+  }
+
+  console.log("Fetching fresh data from API", requestedVideoId ? "for video: " + requestedVideoId : "");
+  
+  const maxResults = requestedVideoId ? 50 : 12; // Augmenter la limite pour trouver une vidéo spécifique
 
   try {
     console.group("YouTube API Request");
@@ -114,9 +213,11 @@ export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<
     searchUrl.searchParams.append('type', 'video');
     searchUrl.searchParams.append('maxResults', maxResults.toString());
     searchUrl.searchParams.append('key', apiKey);
-    searchUrl.searchParams.append('order', 'date'); // Trier par date
-    searchUrl.searchParams.append('videoDefinition', 'high'); // Uniquement les vidéos HD
-    searchUrl.searchParams.append('publishedAfter', new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()); // Dernier mois
+    
+    // Si on cherche une vidéo spécifique, ajuster les paramètres de recherche
+    if (requestedVideoId) {
+      searchUrl.searchParams.append('order', 'date'); // Plus récent d'abord
+    }
 
     if (pageToken) {
       searchUrl.searchParams.append('pageToken', pageToken);
@@ -124,9 +225,18 @@ export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<
 
     const searchData = await makeYoutubeRequest(searchUrl.toString());
     
-    const videoIds = searchData.items?.map((item: any) => item.id.videoId).join(',');
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log("No videos found in search results");
+      return { videos: [], nextPageToken: undefined };
+    }
+
+    const videoIds = searchData.items
+      .filter((item: any) => item.id && item.id.videoId)
+      .map((item: any) => item.id.videoId)
+      .join(',');
+
     if (!videoIds) {
-      console.log("No video IDs found");
+      console.log("No valid video IDs found");
       return { videos: [], nextPageToken: undefined };
     }
 
@@ -134,46 +244,73 @@ export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<
     detailsUrl.searchParams.append('part', 'snippet,contentDetails,statistics');
     detailsUrl.searchParams.append('id', videoIds);
     detailsUrl.searchParams.append('key', apiKey);
-    detailsUrl.searchParams.append('fields', 'items(id,snippet(title,description,thumbnails,channelTitle,channelId,publishedAt),contentDetails/duration,statistics/viewCount)');
+    detailsUrl.searchParams.append('fields', 'items(id,snippet(title,description,thumbnails,channelTitle,channelId,publishedAt),contentDetails/duration,statistics(viewCount,likeCount))');
 
     const detailsData = await makeYoutubeRequest(detailsUrl.toString());
 
+    if (!detailsData.items || detailsData.items.length === 0) {
+      console.log("No video details found");
+      return { videos: [], nextPageToken: undefined };
+    }
+
     // Récupérer les IDs des chaînes uniques
-    const channelIds = [...new Set(detailsData.items.map((item: any) => item.snippet.channelId))].join(',');
+    const channelIds = [...new Set(detailsData.items
+      .filter((item: any) => item.snippet && item.snippet.channelId)
+      .map((item: any) => item.snippet.channelId))]
+      .join(',');
 
-    // Récupérer les avatars des chaînes en une seule requête
-    const channelsUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
-    channelsUrl.searchParams.append('part', 'snippet');
-    channelsUrl.searchParams.append('id', channelIds);
-    channelsUrl.searchParams.append('key', apiKey);
-    channelsUrl.searchParams.append('fields', 'items(id,snippet/thumbnails)');
+    let channelAvatars = new Map();
+    if (channelIds) {
+      const channelsUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+      channelsUrl.searchParams.append('part', 'snippet');
+      channelsUrl.searchParams.append('id', channelIds);
+      channelsUrl.searchParams.append('key', apiKey);
+      channelsUrl.searchParams.append('fields', 'items(id,snippet/thumbnails)');
 
-    const channelsData = await makeYoutubeRequest(channelsUrl.toString());
-    const channelAvatars = new Map(
-      channelsData.items.map((channel: any) => [
-        channel.id,
-        channel.snippet.thumbnails.default?.url ||
-        channel.snippet.thumbnails.medium?.url ||
-        undefined
-      ])
-    );
+      try {
+        const channelsData = await makeYoutubeRequest(channelsUrl.toString());
+        if (channelsData.items) {
+          channelAvatars = new Map(
+            channelsData.items.map((channel: any) => [
+              channel.id,
+              channel.snippet.thumbnails?.default?.url ||
+              channel.snippet.thumbnails?.medium?.url ||
+              undefined
+            ])
+          );
+        }
+      } catch (error) {
+        console.warn('Error fetching channel avatars:', error);
+        // Continue without avatars
+      }
+    }
 
     // Transformer les données en format Video
-    const videos: Video[] = detailsData.items.map((item: any) => ({
-      id: item.id,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnailUrl: item.snippet.thumbnails.maxres?.url || 
-                   item.snippet.thumbnails.high?.url || 
-                   item.snippet.thumbnails.medium?.url || 
-                   item.snippet.thumbnails.default?.url,
-      channelTitle: item.snippet.channelTitle,
-      channelId: item.snippet.channelId,
-      channelThumbnailUrl: channelAvatars.get(item.snippet.channelId),
-      duration: formatDuration(item.contentDetails.duration),
-      viewCount: item.statistics.viewCount,
-      publishedAt: item.snippet.publishedAt
-    }));
+    const videos: Video[] = detailsData.items
+      .filter((item: any) => {
+        // Vérifier que toutes les propriétés requises existent
+        return item.id &&
+          item.snippet?.title &&
+          item.snippet?.channelTitle &&
+          item.snippet?.channelId &&
+          (item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url);
+      })
+      .map((item: any) => ({
+        id: item.id,
+        title: item.snippet.title,
+        description: item.snippet.description || '',
+        thumbnailUrl: item.snippet.thumbnails.maxres?.url || 
+                     item.snippet.thumbnails.high?.url || 
+                     item.snippet.thumbnails.medium?.url || 
+                     item.snippet.thumbnails.default?.url,
+        channelTitle: item.snippet.channelTitle,
+        channelId: item.snippet.channelId,
+        channelThumbnailUrl: channelAvatars.get(item.snippet.channelId),
+        duration: formatDuration(item.contentDetails?.duration || 'PT0S'),
+        viewCount: item.statistics?.viewCount || '0',
+        publishedAt: item.snippet.publishedAt,
+        likeCount: item.statistics?.likeCount || '0'
+      }));
 
     const response = {
       videos,
@@ -181,13 +318,25 @@ export async function getSpaceEngineers2Videos(pageToken: string = ''): Promise<
     };
 
     // Sauvegarder dans le cache uniquement la première page
-    saveCache(response, pageToken);
+    if (!pageToken) {
+      saveCache(response);
+    }
 
     console.groupEnd();
     return response;
 
   } catch (error) {
     console.error('Error fetching videos:', error);
+    // Vérifier si l'erreur est liée au quota
+    if (error instanceof Error && 
+      (error.message.includes('quota') || error.message.includes('403'))) {
+      // Essayer de retourner les données en cache même si elles sont expirées
+      const cachedData = loadCache(pageToken);
+      if (cachedData) {
+        console.log("Returning expired cached data due to quota error");
+        return cachedData;
+      }
+    }
     throw error;
   }
 }
