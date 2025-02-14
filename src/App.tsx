@@ -1,7 +1,7 @@
-import { BrowserRouter as Routes, Route, BrowserRouter } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-{/*import { FeaturesGrid } from './components/Workshop';*/}
 import { CommunityGallery } from './components/CommunityGallery';
 import { ArticlePage } from './components/ArticlePage';
 import { Footer } from './components/Footer';
@@ -10,14 +10,12 @@ import SpaceflixPage from './pages/SpaceflixPage';
 import ToolsPage from './pages/ToolsPage';
 import SpaceCalcPage from './pages/SpaceCalcPage';
 import './styles/App.css';
-import React from 'react';
 
 const HomePage: React.FC = () => {
   return (
     <main>
       <Hero />
       <OpenSourceBanner />
-      {/*<Workshop />*/}
       <section className="social-section" id="social-section"></section>
     </main>
   );
@@ -25,7 +23,7 @@ const HomePage: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter basename="/se2hub">
+    <Router basename="/se2hub">
       <div className="app">
         <Navbar />
         <Routes>
@@ -38,7 +36,7 @@ const App: React.FC = () => {
         </Routes>
         <Footer />
       </div>
-    </BrowserRouter>
+    </Router>
   );
 };
 

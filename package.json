@@ -8,8 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy" : "npm run build",
-    "deploy" : "npm run build && gh-pages -d dist",
+    "predeploy": "npm run build",
+    "deploy": "npm run build && gh-pages -d dist",
+    "postbuild": "cp dist/index.html dist/404.html",
     "homepage": "https://klfd9.github.io/se2hub"
   },
   "dependencies": {
@@ -45,5 +46,4 @@
     "esbuild": ">=0.25.0",
     "vite": "^6.0.5"
   }
-
 }
