@@ -17,37 +17,34 @@ const footerSections: FooterSection[] = [
   {
     title: "Navigation",
     links: [
-      { label: "Actualités", href: "#news", ariaLabel: "Voir les dernières actualités" },
-      { label: "Fonctionnalités", href: "#features", ariaLabel: "Découvrir les fonctionnalités" },
-      { label: "Communauté", href: "#community", ariaLabel: "Rejoindre la communauté" },
-      { label: "Guides & Tutoriels", href: "#guides", ariaLabel: "Consulter les guides" }
+      { label: "Accueil", href: "/", ariaLabel: "Retour à l'accueil" },
+      { label: "Galerie", href: "/gallery", ariaLabel: "Voir la galerie" },
+      { label: "Spaceflix", href: "/spaceflix", ariaLabel: "Accéder à Spaceflix" },
+      { label: "Outils", href: "/tools", ariaLabel: "Accéder aux outils" },
+      { label: "Communauté", href: "/community", ariaLabel: "Rejoindre la communauté" }
     ]
   },
   {
     title: "Ressources",
     links: [
-      { label: "Wiki Communautaire", href: "#", ariaLabel: "Accéder au wiki communautaire" },
-      { label: "Mods Populaires", href: "#", ariaLabel: "Découvrir les mods populaires" },
-      { label: "Blueprints", href: "#", ariaLabel: "Explorer les blueprints" },
-      { label: "Scripts", href: "#", ariaLabel: "Voir les scripts disponibles" }
+      { label: "Calculateur", href: "/tools#calculator", ariaLabel: "Utiliser le calculateur" },
+      { label: "Blueprints", href: "/tools#blueprints", ariaLabel: "Explorer les blueprints" },
+      { label: "Guides", href: "/tools#guides", ariaLabel: "Consulter les guides" }
     ]
   },
   {
     title: "Communauté",
     links: [
-      { label: "FAQ", href: "#", ariaLabel: "Consulter la FAQ" },
-      { label: "Contact", href: "#", ariaLabel: "Nous contacter" },
-      { label: "Règles", href: "#", ariaLabel: "Lire les règles" },
-      { label: "Notre Équipe", href: "#", ariaLabel: "Découvrir notre équipe" }
+      { label: "À venir", href: "#", ariaLabel: "Fonctionnalité à venir" }
     ]
   }
 ]
 
 const socialLinks = [
-  { icon: FaDiscord, label: "Discord", href: "#", ariaLabel: "Rejoindre notre Discord" },
-  { icon: FaTwitter, label: "Twitter", href: "#", ariaLabel: "Nous suivre sur Twitter" },
-  { icon: FaYoutube, label: "YouTube", href: "#", ariaLabel: "S'abonner à notre chaîne YouTube" },
-  { icon: FaReddit, label: "Reddit", href: "#", ariaLabel: "Rejoindre notre subreddit" }
+  { icon: FaDiscord, label: "Discord", href: "https://discord.gg/keenswh", ariaLabel: "Rejoindre le Discord officiel de Space Engineers" },
+  { icon: FaTwitter, label: " / X", href: "https://x.com/SpaceEngineersG", ariaLabel: "Suivre Space Engineers sur X" },
+  { icon: FaYoutube, label: "YouTube", href: "https://www.youtube.com/@SpaceEngineers", ariaLabel: "S'abonner à la chaîne YouTube officielle de Space Engineers" },
+  { icon: FaReddit, label: "Reddit", href: "https://www.reddit.com/r/spaceengineers/", ariaLabel: "Rejoindre le subreddit officiel de Space Engineers" }
 ]
 
 export const Footer = () => {
@@ -61,24 +58,15 @@ export const Footer = () => {
       const scrollPosition = window.scrollY
       const windowHeight = window.innerHeight
       const documentHeight = document.documentElement.scrollHeight
-      
-      // Calculer la progression du scroll (0 à 1)
       const scrollProgress = scrollPosition / (documentHeight - windowHeight)
+      const offsetY = scrollProgress * 100
+      const offsetX = Math.sin(scrollProgress * Math.PI) * 30
       
-      // Calculer les offsets de parallaxe
-      const offsetY = scrollProgress * 100 // Déplacement vertical
-      const offsetX = Math.sin(scrollProgress * Math.PI) * 30 // Léger mouvement horizontal
-      
-      // Appliquer les transformations
       planetRef.current.style.setProperty('--scroll-offset-y', String(offsetY))
       planetRef.current.style.setProperty('--scroll-offset-x', String(offsetX))
       planetRef.current.classList.add('parallax-scroll')
     }
-
-    // Appliquer l'effet initial
     handleScroll()
-
-    // Ajouter l'écouteur d'événement
     window.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
@@ -176,4 +164,4 @@ export const Footer = () => {
       </div>
     </footer>
   )
-} 
+}
