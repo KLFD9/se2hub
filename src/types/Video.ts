@@ -13,3 +13,8 @@ export interface Video {
   subscriberCount?: string;
   likeCount: string;
 }
+
+export interface RecommendedVideosProps {
+  videos: Video[];
+  currentVideoId?: string;  // Ajout de la prop optionnelle currentVideoId
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import RecommendedVideos from '../components/youtube/RecommendedVideos';
@@ -6,95 +6,123 @@ import { Video } from '../types/Video';
 import { getSpaceEngineers2Videos } from '../services/youtubeService';
 import '../styles/components/VideoPlayer.css';
 
+type VideoState = {
+  data: Video | null;
+  recommendations: Video[];
+  loading: boolean;
+  error: string | null;
+};
+
 const VideoPage: React.FC = () => {
   const { videoId } = useParams();
-  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
-  const [recommendedVideos, setRecommendedVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<VideoState>({
+    data: null,
+    recommendations: [],
+    loading: true,
+    error: null
+  });
 
-  useEffect(() => {
-    const loadVideos = async (forceRefresh: boolean = false) => {
-      if (!videoId) {
-        setError("ID de vidéo manquant");
-        return;
+  const fetchVideoData = useCallback(async (abortSignal?: AbortSignal) => {
+    if (!videoId) {
+      setState(prev => ({ ...prev, error: "ID de vidéo manquant", loading: false }));
+      return;
+    }
+
+    try {
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      
+      const response = await getSpaceEngineers2Videos('', videoId);
+      const currentVideo = response.videos.find(v => v.id === videoId);
+
+      if (!currentVideo) {
+        throw new Error('VIDEO_NOT_FOUND');
       }
 
-      try {
-        setLoading(true);
-        setError(null);
+      setState({
+        data: currentVideo,
+        recommendations: response.videos
+          .filter(v => v.id !== videoId)
+          .slice(0, 10),
+        loading: false,
+        error: null
+      });
 
-        // Premier essai avec le cache
-        let response = await getSpaceEngineers2Videos('', videoId);
-        let current = response.videos.find((v) => v.id === videoId);
+    } catch (error) {
+      if (abortSignal?.aborted) return;
+      
+      const message = error instanceof Error 
+        ? error.message === 'VIDEO_NOT_FOUND'
+          ? "Cette vidéo n'est pas disponible"
+          : "Erreur de chargement des données"
+        : "Une erreur inconnue est survenue";
 
-        // Si la vidéo n'est pas trouvée et qu'on n'a pas encore forcé le rafraîchissement
-        if (!current && !forceRefresh) {
-          console.log("Vidéo non trouvée dans le cache, tentative de récupération depuis l'API...");
-          // Réessayer en forçant un rafraîchissement depuis l'API
-          response = await getSpaceEngineers2Videos('', videoId);
-          current = response.videos.find((v) => v.id === videoId);
-        }
-
-        if (!current) {
-          setError("Cette vidéo n'est pas disponible");
-          setCurrentVideo(null);
-        } else {
-          setCurrentVideo(current);
-          // Mettre à jour les recommandations
-          const filteredVideos = response.videos
-            .filter((v) => v.id !== videoId)
-            .slice(0, 10);
-          setRecommendedVideos(filteredVideos);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des vidéos :', error);
-        if (!forceRefresh) {
-          // Si c'était le premier essai, réessayer avec forceRefresh
-          console.log("Tentative de rechargement forcé...");
-          await loadVideos(true);
-        } else {
-          setError("Une erreur est survenue lors du chargement de la vidéo");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadVideos();
+      setState(prev => ({
+        ...prev,
+        error: message,
+        loading: false
+      }));
+    }
   }, [videoId]);
 
-  if (error) {
-    return (
-      <div className="vp-page">
-        <div className="vp-player-section">
-          <div className="video-player-container error">
-            <div className="error-message">{error}</div>
+  useEffect(() => {
+    const abortController = new AbortController();
+    fetchVideoData(abortController.signal);
+
+    return () => abortController.abort();
+  }, [fetchVideoData]);
+
+  const skeletonItems = useMemo(() => 
+    Array.from({ length: 4 }, (_, i) => (
+      <div key={`skeleton-${i}`} className="vp-skeleton">
+        <div className="vp-skeleton-thumb" />
+      </div>
+    )), []);
+
+  const errorContent = useMemo(() => (
+    <div className="vp-page">
+      <div className="vp-player-section">
+        <div className="video-player-container error">
+          <div className="error-message">
+            {state.error}
+            <button 
+              onClick={() => fetchVideoData()}
+              className="retry-button"
+            >
+              Réessayer
+            </button>
           </div>
         </div>
       </div>
-    );
+    </div>
+  ), [state.error, fetchVideoData]);
+
+  if (state.error) {
+    return errorContent;
   }
 
   return (
     <div className="vp-page">
       <div className="vp-player-section">
-        {currentVideo && <VideoPlayer video={currentVideo} />}
+        {state.data && <VideoPlayer video={state.data} />}
+        {state.loading && (
+          <div className="video-player-container loading">
+            <div className="loading-spinner" />
+          </div>
+        )}
       </div>
 
       <aside className="vp-sidebar">
-        {loading ? (
-          Array(4).fill(null).map((_, index) => (
-            <div key={index} className="vp-skeleton">
-              <div className="vp-skeleton-thumb"></div>
-            </div>
-          ))
+        {state.loading ? (
+          skeletonItems
         ) : (
-          recommendedVideos.length > 0 && <RecommendedVideos videos={recommendedVideos} />
+          <RecommendedVideos 
+            videos={state.recommendations} 
+            currentVideoId={videoId}
+          />
         )}
       </aside>
     </div>
   );
 };
 
-export default VideoPage;
+export default React.memo(VideoPage);

@@ -20,6 +20,7 @@ interface CacheState {
   timestamp: number;
 }
 
+
 function formatDuration(duration: string): string {
   const { H = 0, M = 0, S = 0 } = duration.match(DURATION_REGEX)?.groups || {};
   return [Number(H) > 0 ? H : null, String(M).padStart(Number(H) > 0 ? 2 : 1, "0"), String(S).padStart(2, "0")]

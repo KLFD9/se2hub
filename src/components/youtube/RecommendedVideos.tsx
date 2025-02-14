@@ -5,6 +5,7 @@ import '../../styles/components/RecommendedVideos.css';
 
 interface RecommendedVideosProps {
   videos: Video[];
+  currentVideoId?: string;
 }
 
 const RecommendedVideos: React.FC<RecommendedVideosProps> = ({ videos }) => {
