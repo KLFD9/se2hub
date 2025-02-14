@@ -26,7 +26,6 @@ const formatDate = (date: string) => {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   const { videoId } = useParams<{ videoId: string }>();
   const currentVideoId = video?.id || videoId;
-  const [isCinemaMode, setIsCinemaMode] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
@@ -63,11 +62,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
     }
   };
 
-  const toggleCinemaMode = () => {
-    setIsCinemaMode(!isCinemaMode);
-    document.body.classList.toggle('cinema-mode');
-  };
-
   if (videoError) {
     return (
       <div className="video-player-container error">
@@ -88,82 +82,72 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   }
 
   return (
-    <>
-      <div className={`cinema-mode-overlay ${isCinemaMode ? 'active' : ''}`} />
-      <div className={`video-player-container ${isCinemaMode ? 'cinema-mode' : ''}`}>
-        <div className={`video-wrapper ${isCinemaMode ? 'cinema-mode' : ''}`}>
-          <iframe
-            key={`${currentVideoId}-${retryCount}`}
-            src={`https://www.youtube.com/embed/${currentVideoId}`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            onError={handleIframeError}
-          />
-          <button 
-            className="cinema-mode-toggle"
-            onClick={toggleCinemaMode}
-            title={isCinemaMode ? "Désactiver le mode cinéma" : "Activer le mode cinéma"}
-          >
-            {isCinemaMode ? "Quitter le mode cinéma" : "Mode cinéma"}
-          </button>
-        </div>
-        
-        {video && (
-          <div className="video-info">
-            <div className="video-header">
-              <h1 className="video-title">{video.title}</h1>
-              
-              <div className="video-meta-info">
-                <div className="channel-info">
-                  {video.channelThumbnailUrl && (
-                    <img 
-                      src={video.channelThumbnailUrl} 
-                      alt={`Chaîne ${video.channelTitle}`}
-                      loading="lazy"
-                      onClick={() => handleChannelClick(video.channelId)}
-                      className="channel-thumbnail"
-                    />
-                  )}
-                  <div className="channel-details">
-                    <span 
-                      className="channel-name"
-                      onClick={() => handleChannelClick(video.channelId)}
-                    >
-                      {video.channelTitle}
+    <div className="video-player-container">
+      <div className="video-wrapper">
+        <iframe
+          key={`${currentVideoId}-${retryCount}`}
+          src={`https://www.youtube.com/embed/${currentVideoId}`}
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          onError={handleIframeError}
+        />
+      </div>
+      
+      {video && (
+        <div className="video-info">
+          <div className="video-header">
+            <h1 className="video-title">{video.title}</h1>
+            
+            <div className="video-meta-info">
+              <div className="channel-info">
+                {video.channelThumbnailUrl && (
+                  <img 
+                    src={video.channelThumbnailUrl} 
+                    alt={`Chaîne ${video.channelTitle}`}
+                    loading="lazy"
+                    onClick={() => handleChannelClick(video.channelId)}
+                    className="channel-thumbnail"
+                  />
+                )}
+                <div className="channel-details">
+                  <span 
+                    className="channel-name"
+                    onClick={() => handleChannelClick(video.channelId)}
+                  >
+                    {video.channelTitle}
+                  </span>
+                  {video.subscriberCount && (
+                    <span className="subscriber-count">
+                      {formatSubscriberCount(video.subscriberCount)}
                     </span>
-                    {video.subscriberCount && (
-                      <span className="subscriber-count">
-                        {formatSubscriberCount(video.subscriberCount)}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                <div className="video-stats">
-                  {video.viewCount && (
-                    <span>{Number(video.viewCount).toLocaleString('fr-FR')} vues</span>
-                  )}
-                  {video.publishedAt && (
-                    <span>Publié le {formatDate(video.publishedAt)}</span>
-                  )}
-                  {video.likeCount && (
-                    <span>{Number(video.likeCount).toLocaleString('fr-FR')} likes</span>
-                  )}
-                </div>
+              <div className="video-stats">
+                {video.viewCount && (
+                  <span>{Number(video.viewCount).toLocaleString('fr-FR')} vues</span>
+                )}
+                {video.publishedAt && (
+                  <span>Publié le {formatDate(video.publishedAt)}</span>
+                )}
+                {video.likeCount && (
+                  <span>{Number(video.likeCount).toLocaleString('fr-FR')} likes</span>
+                )}
               </div>
             </div>
-
-            {video.description && (
-              <div className="video-description">
-                {video.description}
-              </div>
-            )}
           </div>
-        )}
-      </div>
-    </>
+
+          {video.description && (
+            <div className="video-description">
+              {video.description}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
