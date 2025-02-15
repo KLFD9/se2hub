@@ -11,13 +11,11 @@ export interface SocialPost {
   avatar: string;
 }
 
-// Fonction pour incrémenter les likes d'une image
 export async function incrementImageLikes(imageId: string): Promise<number> {
   try {
     const response = await axios.post('/api/incrementLikes', { imageId });
     return response.data.likes;
   } catch (error: any) {
-    // Si l'endpoint n'existe pas (404), on laisse l'état optimiste sans afficher d'erreur
     if (error.response && error.response.status === 404) {
       return 0;
     }
@@ -25,7 +23,6 @@ export async function incrementImageLikes(imageId: string): Promise<number> {
   }
 }
 
-// Fonction pour décrémenter les likes d'une image (non utilisée pour le moment)
 export async function decrementImageLikes(imageId: string): Promise<number> {
   try {
     const response = await axios.post('/api/decrementLikes', { imageId });

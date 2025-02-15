@@ -166,7 +166,6 @@ export async function getSpaceEngineers2Videos(
 
     const details = await fetchVideoDetails(videoIds, apiKey, controller.signal);
 
-    // Sort by publication date (newest first)
     details.sort((a, b) => 
       new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime()
     );

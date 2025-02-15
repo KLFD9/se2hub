@@ -38,14 +38,12 @@ const SkeletonCard = ({ isMain = false }: { isMain?: boolean }) => (
   </article>
 )
 
-// Fonction utilitaire pour nettoyer les URLs d'images
 const cleanImageUrl = (url: string): string => {
   return url.replace(/\[\/img\]/g, '').replace(/\[img\]/g, '')
 }
 
 export const Hero = () => {
   const [readPosts, setReadPosts] = useState<Set<number>>(() => {
-    // Récupérer les articles lus depuis le localStorage
     const saved = localStorage.getItem('readPosts')
     return saved ? new Set(JSON.parse(saved)) : new Set()
   })
@@ -78,7 +76,6 @@ export const Hero = () => {
     loadInitialPosts()
   }, [])
 
-  // Sauvegarder les articles lus dans le localStorage
   useEffect(() => {
     localStorage.setItem('readPosts', JSON.stringify(Array.from(readPosts)))
   }, [readPosts])

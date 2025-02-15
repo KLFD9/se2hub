@@ -169,7 +169,6 @@ export const smallShipThrusters: Record<string, ThrusterData> = {
         ,
         gameConsistency: "full"
     },
-    // Nouveau propulseur ajouté pour small grid
     largeFlatAtmospheric: {
         name: "Large Flat Atmospheric Thruster",
         weight: 850,

@@ -89,12 +89,10 @@ export const ServerRentalSection = () => {
       const particle = document.createElement('div')
       particle.className = 'particle'
       
-      // Position aléatoire de départ dans la zone visible
       const rect = particlesRef.current.getBoundingClientRect()
       const startX = Math.random() * rect.width
       const startY = Math.random() * rect.height
       
-      // Déplacement plus court pour optimisation
       const moveX = (Math.random() - 0.5) * 200
       const moveY = (Math.random() - 0.5) * 200
       const moveZ = Math.random() * 100 - 50
@@ -121,12 +119,10 @@ export const ServerRentalSection = () => {
       })
     }
 
-    // Créer moins de particules au démarrage
     for (let i = 0; i < 10; i++) {
       setTimeout(createParticle, i * 200)
     }
 
-    // Réduire la fréquence de création
     const particleInterval = setInterval(createParticle, 500)
 
     return () => {

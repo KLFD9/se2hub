@@ -47,8 +47,6 @@ const pendingRequests: { [key: string]: PendingRequest | PendingImageRequest } =
 
 // Cache pour les articles individuels
 const articleCache: { [key: string]: { data: FeaturedPost, timestamp: number } } = {}
-
-// Fonction optimisée pour les requêtes avec cache et déduplication
 const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
   const now = Date.now()
   const cacheKey = encodeURIComponent(url)
@@ -81,8 +79,6 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
-
-        // Pour l'API Steam News, on attend du JSON
         if (url === STEAM_NEWS_URL) {
           const data = await response.json()
           if (!data.appnews?.newsitems) {
@@ -102,8 +98,6 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
           }
           return processedData
         }
-
-        // Pour les autres URLs, on attend du HTML
         const text = await response.text()
         const processedData: ProxyResponse = {
           contents: text,
@@ -134,8 +128,6 @@ const fetchWithCache = async (url: string): Promise<ProxyResponse> => {
     throw new Error(`Erreur lors de la récupération des données depuis ${url}`)
   }
 }
-
-// Fonction pour extraire l'image featured avec cache et déduplication
 const extractFeaturedImage = async (content: string, url: string): Promise<string> => {
   try {
     const steamImageRegex = /\{STEAM_CLAN_IMAGE\}\/[^}"\s]+/g
@@ -297,8 +289,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
     if (!newsItem) {
       throw new Error('Article non trouvé')
     }
-
-    // Nettoyer le contenu initial des balises BBCode
     let initialContent = newsItem.contents
       .replace(/\[img\]/gi, '')
       .replace(/\[\/img\]/gi, '')
@@ -309,21 +299,17 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       .replace(/\[\*\]/gi, '• ')
 
 
-    // Récupérer le contenu complet
     let fullContent = initialContent
     if (newsItem.url) {
       try {
-        // Construire l'URL correcte pour Steam Community
         const targetUrl = newsItem.url
           .replace('steamstore-a.akamaihd.net/news/externalpost/', 'steamcommunity.com/games/')
-          .replace(/\/\d+$/, '') // Supprimer l'ID à la fin si présent
+          .replace(/\/\d+$/, '')
         
         const articleData = await fetchWithCache(targetUrl)
         if (articleData.contents) {
           const parser = new DOMParser()
           const articleDoc = parser.parseFromString(articleData.contents, 'text/html')
-          
-          // Rechercher le contenu dans l'ordre de priorité
           const contentSelectors = [
             '.announcement_body',
             '.blogSectionContent',
@@ -337,10 +323,8 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
             const content = articleDoc.querySelector(selector)
             if (content) {
               
-              // Nettoyer le contenu HTML
               content.querySelectorAll('script, style, iframe').forEach(el => el.remove())
               
-              // Préserver la structure HTML et les sauts de ligne
               let cleanContent = content.innerHTML
                 .replace(/\[img\]/gi, '')
                 .replace(/\[\/img\]/gi, '')
@@ -355,8 +339,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
                 .replace(/>\s+</g, '><')
                 .replace(/\n/g, '<br>')
 
-
-              // Structurer le contenu en paragraphes
               if (!cleanContent.includes('<p')) {
                 cleanContent = cleanContent
                   .split(/\n{2,}/)
@@ -384,7 +366,6 @@ export const fetchArticleById = async (id: string | number): Promise<FeaturedPos
       }
     }
 
-    // Analyser le contenu final
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = fullContent
 

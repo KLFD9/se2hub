@@ -3,7 +3,7 @@ export interface Video {
   id: string;
   title: string;
   description: string;
-  thumbnailUrl: string;  // Renommé de thumbnail
+  thumbnailUrl: string;
   channelTitle: string;
   channelId: string;
   channelThumbnailUrl?: string;
@@ -16,5 +16,5 @@ export interface Video {
 
 export interface RecommendedVideosProps {
   videos: Video[];
-  currentVideoId?: string;  // Ajout de la prop optionnelle currentVideoId
+  currentVideoId?: string;
 }

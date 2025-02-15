@@ -47,13 +47,10 @@ export const CommunityGallery: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<SteamScreenshot | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLikedOnly, setShowLikedOnly] = useState(false);
-
-  // État persistant des images votées
   const [likedImages, setLikedImages] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('likedImages');
     return saved ? JSON.parse(saved) : {};
   });
-  // Référence pour verrouiller les clics rapides sur une image
   const voteLock = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -62,7 +59,7 @@ export const CommunityGallery: React.FC = () => {
 
   const handleToggleLike = async (imageId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (voteLock.current[imageId]) return; // Si déjà en cours, ne rien faire
+    if (voteLock.current[imageId]) return;
     voteLock.current[imageId] = true;
 
     const imageIndex = images.findIndex(image => image.id === imageId);
@@ -73,7 +70,6 @@ export const CommunityGallery: React.FC = () => {
     const updatedImages = [...images];
 
     if (!likedImages[imageId]) {
-      // Vote non appliqué : on vote
       updatedImages[imageIndex] = {
         ...updatedImages[imageIndex],
         stats: {
@@ -87,7 +83,6 @@ export const CommunityGallery: React.FC = () => {
       try {
         await incrementImageLikes(imageId);
       } catch (error: any) {
-        // En cas d'erreur autre que 404, on annule le vote
         if (!(error.response && error.response.status === 404)) {
           setLikedImages(prev => {
             const newState = { ...prev };
@@ -103,10 +98,8 @@ export const CommunityGallery: React.FC = () => {
           };
           setImages(updatedImages);
         }
-        // Sinon (404), on ignore l'erreur en mode optimiste
       }
     } else {
-      // Vote déjà appliqué : on annule le vote (toggle off)
       updatedImages[imageIndex] = {
         ...updatedImages[imageIndex],
         stats: {
@@ -120,7 +113,6 @@ export const CommunityGallery: React.FC = () => {
         delete newState[imageId];
         return newState;
       });
-      // Pas d'appel à l'API pour décrémenter afin d'éviter le 404
     }
     voteLock.current[imageId] = false;
   };

@@ -151,11 +151,9 @@ class SteamService {
         const getElement = (selector: string) => item.querySelector(selector);
         const getText = (selector: string) => getElement(selector)?.textContent?.trim() || '';
 
-        // Extraction des URLs
         const imageElement = getElement('.apphub_CardContentPreviewImage') as HTMLImageElement;
         const { thumbnailUrl, url } = this.extractImageUrls(imageElement);
 
-        // Extraction améliorée de l'auteur
         const authorContainer = getElement('.apphub_CardContentAuthorBlock') as HTMLElement;
         const authorBlock = authorContainer?.querySelector('.apphub_friend_block') as HTMLElement;
         const authorNameElement = authorBlock?.querySelector('.apphub_CardContentAuthorName.offline a:last-child, .apphub_CardContentAuthorName.online a:last-child') as HTMLAnchorElement;
@@ -165,15 +163,12 @@ class SteamService {
         const authorName = authorNameElement?.textContent?.trim() || '';
         const authorAvatarUrl = authorAvatarElement?.src || '';
 
-        // Nettoyage et validation des données de l'auteur
         const author = {
           steamId: authorLink.split('/').filter(Boolean).pop() || '',
           name: authorName || 'Anonyme',
           profileUrl: authorLink || '#',
           avatarUrl: authorAvatarUrl || ''
         };
-
-        // Extraction du reste des données
         const title = getText('.apphub_CardContentTitle') || 'Sans titre';
         const description = getText('.apphub_CardTextContent') || '';
         const likesText = getText('.apphub_CardRating');

@@ -9,7 +9,6 @@ interface YoutubeVideoCardProps {
   compact?: boolean;
 }
 
-// Fonctions de formatage (inchangées)
 function formatViewCount(viewCount?: string): string {
   if (!viewCount) return '';
   const count = Number(viewCount);

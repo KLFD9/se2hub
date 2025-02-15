@@ -31,7 +31,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   const maxRetries = 3;
 
   useEffect(() => {
-    // Réinitialiser l'état d'erreur lors du changement de vidéo
     setVideoError(false);
     setRetryCount(0);
   }, [currentVideoId]);
@@ -46,7 +45,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
 
   const handleIframeError = () => {
     if (retryCount < maxRetries) {
-      // Attendre un peu avant de réessayer
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
         setVideoError(false);

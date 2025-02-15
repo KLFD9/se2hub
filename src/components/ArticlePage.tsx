@@ -240,7 +240,6 @@ export const ArticlePage = () => {
   }, [id])
 
   useEffect(() => {
-    // Gestion des embeds après rendu du contenu
     const handleEmbeds = () => {
       // YouTube
       document.querySelectorAll('.video-container.youtube').forEach((container) => {

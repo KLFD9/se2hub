@@ -18,7 +18,7 @@ const YoutubeVideos: React.FC = () => {
       if (reset) {
         console.debug('[YT Component] Initial load started');
         setIsInitialLoading(true);
-        setVideos([]); // Clear existing videos on reset
+        setVideos([]);
       } else {
         console.debug(`[YT Component] Loading more: ${pageToken}`);
         setIsLoadingMore(true);
