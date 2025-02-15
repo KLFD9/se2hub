@@ -16,10 +16,9 @@ const API_ENDPOINTS = {
 
 interface CacheState {
   videosMap: Record<string, Video>;
-  pageMap: Record<string, string[]>;
+  pageMap: Record<string, { ids: string[]; nextToken?: string }>;
   timestamp: number;
 }
-
 
 function formatDuration(duration: string): string {
   const { H = 0, M = 0, S = 0 } = duration.match(DURATION_REGEX)?.groups || {};
@@ -32,20 +31,21 @@ function createCacheManager() {
   const getCache = (): CacheState | null => {
     try {
       const data = localStorage.getItem(CACHE_KEY);
-      return data && Date.now() - JSON.parse(data).timestamp < CACHE_TTL
-        ? JSON.parse(data)
-        : null;
+      if (!data) return null;
+      
+      const parsed = JSON.parse(data);
+      return parsed && Date.now() - parsed.timestamp < CACHE_TTL ? parsed : null;
     } catch {
       return null;
     }
   };
 
-  const saveCache = (videos: Video[], _nextToken?: string, pageToken = "") => {
+  const saveCache = (videos: Video[], nextToken?: string, pageToken = "") => {
     const cache = getCache() || { videosMap: {}, pageMap: {}, timestamp: 0 };
     const newMap = videos.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
 
     cache.videosMap = { ...cache.videosMap, ...newMap };
-    cache.pageMap[pageToken] = videos.map((v) => v.id);
+    cache.pageMap[pageToken] = { ids: videos.map((v) => v.id), nextToken };
     cache.timestamp = Date.now();
 
     try {
@@ -57,12 +57,18 @@ function createCacheManager() {
 
   const loadCache = (pageToken = ""): VideosResponse | null => {
     const cache = getCache();
-    if (!cache) return null;
+    if (!cache?.pageMap?.[pageToken]?.ids) return null;
 
-    const videoIds = cache.pageMap[pageToken] || Object.values(cache.pageMap).flat();
+    const pageData = cache.pageMap[pageToken];
+    const videos = pageData.ids
+      .map(id => cache.videosMap?.[id])
+      .filter((v): v is Video => v !== undefined);
+
+    if (videos.length === 0) return null;
+
     return {
-      videos: Array.from(new Set(videoIds)).map((id) => cache.videosMap[id]),
-      nextPageToken: Object.keys(cache.pageMap).find((k) => k !== pageToken),
+      videos,
+      nextPageToken: pageData.nextToken
     };
   };
 
@@ -121,7 +127,6 @@ export async function getSpaceEngineers2Videos(
 ): Promise<VideosResponse> {
   const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
   if (!apiKey) throw new Error("API_KEY_MISSING");
-
   if (requestedId) {
     try {
       const video = await getVideoById(requestedId, apiKey);
@@ -138,14 +143,17 @@ export async function getSpaceEngineers2Videos(
   }
 
   const cached = loadCache(pageToken);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
 
   try {
     const controller = new AbortController();
     const searchUrl = new URL(API_ENDPOINTS.SEARCH);
     searchUrl.searchParams.set("part", "snippet");
-    searchUrl.searchParams.set("q", "Space Engineers 2 gameplay");
+    searchUrl.searchParams.set("q", "Space Engineers 2");
     searchUrl.searchParams.set("type", "video");
+    searchUrl.searchParams.set("order", "date");
     searchUrl.searchParams.set("maxResults", "50");
     searchUrl.searchParams.set("key", apiKey);
     searchUrl.searchParams.set("pageToken", pageToken);
@@ -157,6 +165,12 @@ export async function getSpaceEngineers2Videos(
     if (!videoIds.length) return { videos: [], nextPageToken: undefined };
 
     const details = await fetchVideoDetails(videoIds, apiKey, controller.signal);
+
+    // Sort by publication date (newest first)
+    details.sort((a, b) => 
+      new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime()
+    );
+
     const channelIds = [...new Set(details.map((d) => d.snippet?.channelId).filter(Boolean))];
     const avatars = await fetchChannelAvatars(channelIds, apiKey, controller.signal);
 
@@ -175,9 +189,14 @@ export async function getSpaceEngineers2Videos(
     })).filter((v) => v.thumbnailUrl);
 
     saveCache(videos, searchData.nextPageToken, pageToken);
-    return { videos, nextPageToken: searchData.nextPageToken };
+
+    return { 
+      videos, 
+      nextPageToken: searchData.nextPageToken 
+    };
 
   } catch (error) {
+    console.error(`[YT Service Error] ${error instanceof Error ? error.message : 'Unknown error'}`);
     if (error instanceof Error && error.message.includes("quota exceeded")) {
       const fallback = loadCache(pageToken);
       return fallback || { videos: [], nextPageToken: undefined };

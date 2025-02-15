@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Video } from '../../types/Video';
-import { getSpaceEngineers2Videos, VideosResponse } from '../../services/youtubeService';
+import { getSpaceEngineers2Videos } from '../../services/youtubeService';
 import YoutubeVideoCard from './YoutubeVideoCard';
 import YoutubeVideoCardSkeleton from './YoutubeVideoCardSkeleton';
 import '../../styles/pages/Youtube.css';
@@ -8,124 +8,81 @@ import '../../styles/pages/Youtube.css';
 const YoutubeVideos: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>();
-  const [lastFetchedToken, setLastFetchedToken] = useState<string | null>(null);
-
-  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [isQuotaError, setIsQuotaError] = useState<boolean>(false);
-  const [hasMore, setHasMore] = useState<boolean>(true);
-
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isQuotaError, setIsQuotaError] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const fetchVideos = useCallback(
-    async (pageToken: string = '', reset = false) => {
-      if (isQuotaError || (!reset && !hasMore)) return;
-
+  const fetchVideos = useCallback(async (pageToken = '', reset = false) => {
+    try {
       if (reset) {
+        console.debug('[YT Component] Initial load started');
         setIsInitialLoading(true);
-        setHasMore(true);
+        setVideos([]); // Clear existing videos on reset
       } else {
+        console.debug(`[YT Component] Loading more: ${pageToken}`);
         setIsLoadingMore(true);
       }
 
-      try {
-        const response: VideosResponse = await getSpaceEngineers2Videos(pageToken);
-
-        setVideos((prev) => {
-          const combined = reset ? response.videos : [...prev, ...response.videos];
-          const unique = combined.filter(
-            (video, index, self) => self.findIndex((v) => v.id === video.id) === index
-          );
-          return unique;
-        });
-
-        setNextPageToken(response.nextPageToken);
-
-        const canContinue = !!response.nextPageToken && response.videos.length > 0;
-        if (response.nextPageToken && response.nextPageToken === lastFetchedToken) {
-          setHasMore(false);
-        } else {
-          setHasMore(canContinue);
-          setLastFetchedToken(response.nextPageToken || null);
-        }
-
-        setIsQuotaError(false);
-      } catch {
-        setIsQuotaError(true);
-        setHasMore(false);
-      } finally {
-        setIsInitialLoading(false);
-        setIsLoadingMore(false);
+      const response = await getSpaceEngineers2Videos(pageToken);
+      
+      if (!response?.videos) {
+        console.debug('[YT Component] No videos in response');
+        return;
       }
-    },
-    [isQuotaError, hasMore, lastFetchedToken]
-  );
+
+      console.debug(`[YT Component] Received ${response.videos.length} videos, nextToken: ${response.nextPageToken}`);
+
+      setVideos(prev => {
+        const combined = reset ? response.videos : [...prev, ...response.videos];
+        return combined.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+      });
+
+      setNextPageToken(response.nextPageToken);
+      setIsQuotaError(false);
+
+    } catch (error) {
+      console.error('[YT Component Error]', error);
+      setIsQuotaError(true);
+    } finally {
+      setIsInitialLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []);
 
   useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting && nextPageToken && !isLoadingMore) {
+        console.debug('[YT Component] Triggering infinite scroll load');
+        fetchVideos(nextPageToken);
+      }
+    }, { rootMargin: '400px' });
+
+    const currentRef = sentinelRef.current;
+    if (currentRef) observer.observe(currentRef);
+
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+      observer.disconnect();
+    };
+  }, [nextPageToken, isLoadingMore, fetchVideos]);
+
+  useEffect(() => {
+    console.debug('[YT Component] Initial load triggered');
     fetchVideos('', true);
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
   }, [fetchVideos]);
-
-  useEffect(() => {
-    if (!hasMore || isLoadingMore || isInitialLoading) {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-      return;
-    }
-
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && nextPageToken) {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            fetchVideos(nextPageToken);
-          }, 500);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-      clearTimeout(timeoutId);
-    };
-  }, [nextPageToken, isLoadingMore, isInitialLoading, hasMore, fetchVideos]);
 
   return (
     <>
       {isQuotaError && (
-        <div
-          style={{
-            padding: '1rem',
-            margin: '1rem',
-            backgroundColor: '#fff3cd',
-            color: '#856404',
-            borderRadius: '4px',
-            textAlign: 'center',
-          }}
-        >
-          Le quota d'appels à l'API YouTube a été dépassé. Veuillez réessayer plus tard ou contacter l'administrateur.
+        <div className="quota-error">
+          Le quota d'appels à l'API YouTube a été dépassé.
         </div>
       )}
 
       <div className="youtube-videos">
-        {videos.map((video, index) => (
-          <YoutubeVideoCard key={`${video.id}-${index}`} video={video} />
+        {videos.map((video) => (
+          <YoutubeVideoCard key={video.id} video={video} />
         ))}
 
         {(isInitialLoading || isLoadingMore) &&
@@ -133,20 +90,13 @@ const YoutubeVideos: React.FC = () => {
             <YoutubeVideoCardSkeleton key={`skeleton-${index}`} />
           ))}
 
-        {!isInitialLoading && !isLoadingMore && !hasMore && videos.length > 0 && (
-          <div
-            style={{
-              gridColumn: '1/-1',
-              textAlign: 'center',
-              padding: '1rem',
-              color: '#666',
-            }}
-          >
+        {!isInitialLoading && !isLoadingMore && !nextPageToken && videos.length > 0 && (
+          <div className="end-of-results">
             Fin des résultats
           </div>
         )}
 
-        {hasMore && <div ref={sentinelRef} style={{ height: '1px' }} />}
+        <div ref={sentinelRef} className="sentinel" />
       </div>
     </>
   );
