@@ -106,7 +106,7 @@
 
 .video-wrapper {
   position: relative;
-  padding-bottom: 56.25%; /* Ratio 16:9 */
+  padding-bottom: 56.25%;
   height: 0;
   background: var(--bg-dark);
   border-radius: 12px;
@@ -196,7 +196,7 @@
   display: flex;
   gap: 16px;
   color: var(--text-description);
-  font-size: 14px;
+  font-size: 0.7rem;
 }
 
 .video-description {
