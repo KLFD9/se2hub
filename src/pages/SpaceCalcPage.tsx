@@ -557,7 +557,6 @@ const SpaceCalcPage: React.FC = () => {
               <span>{targetAutonomy} h</span>
             </div>
             <div className="container-config">
-              <h3>Configuration des Conteneurs</h3>
               <div className="container-inputs">
                 <div className="container-input">
                   <label className="tooltip" data-tooltip="Volume: 125L, Masse: 49.2kg">Petits Conteneurs</label>
