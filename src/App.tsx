@@ -9,6 +9,7 @@ import SpaceflixPage from './pages/SpaceflixPage'
 import ToolsPage from './pages/ToolsPage'
 import SpaceCalcPage from './pages/SpaceCalcPage'
 import VideoPage from './pages/VideoPage'
+import CommunityPage from './pages/CommunityPage'
 import './styles/App.css'
 import React from 'react'
 
@@ -32,6 +33,7 @@ const App: React.FC = () => (
         <Route path="/video/:videoId" element={<VideoPage />} />
         <Route path="/tools" element={<ToolsPage />} />
         <Route path="/tools/spacecalc" element={<SpaceCalcPage />} />
+        <Route path="/community" element={<CommunityPage />} />
       </Routes>
       <Footer />
     </div>
