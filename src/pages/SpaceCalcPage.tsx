@@ -247,6 +247,22 @@ const SpaceCalcPage: React.FC = () => {
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [theme] = useState<'retro' | 'modern'>('retro');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const calculateContainerStats = (): ContainerStats => {
+    const cargoData = shipSize === 'small' ? smallShipCargo : largeShipCargo;
+    let totalVolume = 0, emptyMass = 0, maxCapacity = 0;
+    Object.entries(containers).forEach(([size, value]) => {
+      if (size !== 'isFilled' && cargoData[size]) {
+        const count = Number(value);
+        emptyMass += cargoData[size].mass * count;
+        totalVolume += cargoData[size].volume * count;
+        maxCapacity += cargoData[size].volume * count * 7.8;
+      }
+    });
+    const totalMass = containers.isFilled ? emptyMass + (totalVolume * ores.iron.mass) : emptyMass;
+    return { totalMass, totalVolume, emptyMass, maxCapacity, fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides' };
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem('spacecalc-configs');
     if (saved) setSavedConfigs(JSON.parse(saved));
@@ -255,7 +271,7 @@ const SpaceCalcPage: React.FC = () => {
   useEffect(() => {
     const stats = calculateContainerStats();
     setContainerStats(stats);
-  }, [containers, shipSize]);
+  }, [calculateContainerStats, containers, shipSize]);
 
   const resetConfig = () => {
     setWeight('');
@@ -286,21 +302,6 @@ const SpaceCalcPage: React.FC = () => {
     const newConfigs = savedConfigs.filter(config => config.id !== id);
     setSavedConfigs(newConfigs);
     localStorage.setItem('spacecalc-configs', JSON.stringify(newConfigs));
-  };
-
-  const calculateContainerStats = (): ContainerStats => {
-    const cargoData = shipSize === 'small' ? smallShipCargo : largeShipCargo;
-    let totalVolume = 0, emptyMass = 0, maxCapacity = 0;
-    Object.entries(containers).forEach(([size, value]) => {
-      if (size !== 'isFilled' && cargoData[size]) {
-        const count = Number(value);
-        emptyMass += cargoData[size].mass * count;
-        totalVolume += cargoData[size].volume * count;
-        maxCapacity += cargoData[size].volume * count * 7.8;
-      }
-    });
-    const totalMass = containers.isFilled ? emptyMass + (totalVolume * ores.iron.mass) : emptyMass;
-    return { totalMass, totalVolume, emptyMass, maxCapacity, fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides' };
   };
 
   const calculateAxisCombination = (
@@ -353,8 +354,8 @@ const SpaceCalcPage: React.FC = () => {
     // Option B : uniquement grandes batteries (avec 10% de marge supplémentaire)
     const optionLargeCount = Math.ceil(requiredEnergy * 1.1 / batteries.largeBattery.maxStoredPower);
     // Option C : combinaison mixte
-    let mixLarge = Math.floor(requiredEnergy / batteries.largeBattery.maxStoredPower);
-    let remainingEnergy = requiredEnergy - mixLarge * batteries.largeBattery.maxStoredPower;
+    const mixLarge = Math.floor(requiredEnergy / batteries.largeBattery.maxStoredPower);
+    const remainingEnergy = requiredEnergy - mixLarge * batteries.largeBattery.maxStoredPower;
     const mixSmall = Math.ceil(remainingEnergy / batteries.smallBattery.maxStoredPower);
 
     const optionA = {
