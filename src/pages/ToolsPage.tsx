@@ -49,6 +49,17 @@ const tools: ToolCard[] = [
     progress: 0,
     status: 'Planifié',
     githubUrl: 'https://github.com/engineers-hub/PowerGrid'
+  },
+  {
+    title: 'Mod Manager',
+    description: 'Gérez vos mods Space Engineers et partagez vos modlists',
+    path: '/tools/modmanager',
+    icon: '🧩',
+    tags: ['Mods', 'Gestion'],
+    creator: '@SE2HubTeam',
+    progress: 10,
+    status: 'Planifié',
+    githubUrl: 'https://github.com/g3arshift/Space-Engineers-Mod-Manager'
   }
 ];
 
