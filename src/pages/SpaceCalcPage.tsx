@@ -518,6 +518,31 @@ const SpaceCalcPage: React.FC = () => {
     document.body.removeChild(aElem);
   };
 
+  const importConfig = (file: File): void => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const data: ExportData = JSON.parse(text);
+        const cfg = data.configuration;
+        setShipSize(cfg.shipSize);
+        setWeight(cfg.baseWeight.toString());
+        setGravity(cfg.gravity);
+        setAtmosphere(cfg.atmosphere);
+        setMultiplier(cfg.multiplier);
+        setVehicleType(cfg.vehicleType);
+        setSystemMargin(cfg.systemMargin);
+        setTargetAutonomy(cfg.targetAutonomy);
+        setContainerStats(data.containerStats);
+        setResults(data.thrusterResults);
+        setMultiAxisResults(data.multiAxisConfig);
+      } catch (err) {
+        console.error('Import failed', err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className={`spacecalc-container ${theme}`}>
       {savedConfigs.length > 0 && (
@@ -649,6 +674,18 @@ const SpaceCalcPage: React.FC = () => {
               <pre style={{ whiteSpace: 'pre-wrap' }}>{generateSummary()}</pre>
             </div>
             <div className="export-section">
+              <input
+                id="importFile"
+                type="file"
+                accept="application/json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) importConfig(file);
+                  e.target.value = '';
+                }}
+              />
+              <label htmlFor="importFile" className="import-btn">Importer</label>
               <button className="export-btn" onClick={exportResults} title="Exporter les résultats en JSON">
                 Exporter les Résultats
               </button>
