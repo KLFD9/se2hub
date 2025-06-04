@@ -1,0 +1,90 @@
+.mod-manager-container {
+  padding: 2rem;
+  color: var(--color-text);
+}
+
+.mod-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.add-mod-btn {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mod-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+.mod-item {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.delete-mod-btn {
+  margin-left: auto;
+  background: transparent;
+  color: var(--color-text);
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.mod-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.export-mods-btn {
+  background: linear-gradient(135deg, #2c3e50, #3498db);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-box {
+  margin-bottom: 1rem;
+}
+
+.search-results {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.search-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.search-item img {
+  width: 32px;
+  height: 32px;
+}
+
+.search-item button {
+  margin-left: auto;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}

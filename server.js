@@ -73,6 +73,39 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
+// Recherche de mods sur le Workshop Steam
+app.get('/api/mods/search', async (req, res) => {
+  const query = req.query.q;
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Paramètre q manquant' });
+  }
+
+  try {
+    const searchUrl = `https://steamcommunity.com/workshop/browse/?appid=244850&searchtext=${encodeURIComponent(
+      query
+    )}&numperpage=10`;
+    const response = await axios.get(searchUrl);
+    const $ = cheerio.load(response.data);
+    const mods = [];
+
+    $('.workshopItem').each((_, el) => {
+      const link = $(el).find('a.ugc').attr('href');
+      const idMatch = link && link.match(/\?id=(\d+)/);
+      const id = idMatch ? idMatch[1] : null;
+      const name = $(el).find('.workshopItemTitle').text().trim();
+      const image = $(el).find('.workshopItemPreviewImage').attr('src');
+      if (id) {
+        mods.push({ id, name, image });
+      }
+    });
+
+    res.json({ mods });
+  } catch (error) {
+    console.error('Erreur lors de la recherche de mods:', error.message);
+    res.status(500).json({ error: 'Échec de la récupération des mods' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
 }); 

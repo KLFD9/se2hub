@@ -79,6 +79,15 @@ L'outil **SpaceCalc** permet d'exporter vos calculs sous forme de fichier JSON. 
 
 Pour réimporter une configuration, cliquez sur le bouton **Importer** dans la section d'export de SpaceCalc et sélectionnez votre fichier `.json`. Les valeurs de configuration (taille du vaisseau, masse, environnement...) seront chargées automatiquement ainsi que les résultats associés.
 
+## 🧩 Mod Manager
+
+Ce nouvel outil permet désormais d'éditer simplement vos listes de mods Space Engineers.
+Inspiré par [Space-Engineers-Mod-Manager](https://github.com/g3arshift/Space-Engineers-Mod-Manager),
+il offre l'import/export de modlists et la détection de conflits (fonctionnalité planifiée).
+Vous pouvez ajouter ou supprimer des mods, sauvegarder la liste dans le navigateur et exporter un fichier `modlist.json`.
+Depuis cette version, un champ de recherche permet de trouver un mod directement via le Workshop Steam.
+Les résultats s'affichent sous la barre de recherche et vous pouvez ajouter un mod en un clic sans retenir son identifiant.
+
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues! Voici comment participer:

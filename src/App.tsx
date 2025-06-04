@@ -1,17 +1,18 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Navbar } from './components/Navbar'
-import { Hero } from './components/Hero'
-import { CommunityGallery } from './components/CommunityGallery'
-import { ArticlePage } from './components/ArticlePage'
-import { Footer } from './components/Footer'
-import { OpenSourceBanner } from './components/OpenSourceBanner'
-import SpaceflixPage from './pages/SpaceflixPage'
-import ToolsPage from './pages/ToolsPage'
-import SpaceCalcPage from './pages/SpaceCalcPage'
-import VideoPage from './pages/VideoPage'
-import CommunityPage from './pages/CommunityPage'
-import './styles/App.css'
-import React from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Navbar } from './components/Navbar';
+import { Hero } from './components/Hero';
+import { CommunityGallery } from './components/CommunityGallery';
+import { ArticlePage } from './components/ArticlePage';
+import { Footer } from './components/Footer';
+import { OpenSourceBanner } from './components/OpenSourceBanner';
+import SpaceflixPage from './pages/SpaceflixPage';
+import ToolsPage from './pages/ToolsPage';
+import SpaceCalcPage from './pages/SpaceCalcPage';
+import ModManagerPage from './pages/ModManagerPage';
+import VideoPage from './pages/VideoPage';
+import CommunityPage from './pages/CommunityPage';
+import './styles/App.css';
+import React from 'react';
 
 const HomePage: React.FC = () => (
   <main>
@@ -19,7 +20,7 @@ const HomePage: React.FC = () => (
     <OpenSourceBanner />
     <section className="social-section" id="social-section"></section>
   </main>
-)
+);
 
 const App: React.FC = () => (
   <BrowserRouter>
@@ -33,10 +34,12 @@ const App: React.FC = () => (
         <Route path="/video/:videoId" element={<VideoPage />} />
         <Route path="/tools" element={<ToolsPage />} />
         <Route path="/tools/spacecalc" element={<SpaceCalcPage />} />
+        <Route path="/tools/modmanager" element={<ModManagerPage />} />
         <Route path="/community" element={<CommunityPage />} />
       </Routes>
       <Footer />
     </div>
   </BrowserRouter>
-)
-export default App
+);
+
+export default App;

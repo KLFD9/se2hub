@@ -167,8 +167,9 @@
   /* Fond de carte distinct selon le data-tool, si besoin */
   .tool-card[data-tool="SpaceCalc"]::before,
   .tool-card[data-tool="ResourceTracker"]::before,
-  .tool-card[data-tool="PowerGrid"]::before {
-    content: '';
+  .tool-card[data-tool="PowerGrid"]::before,
+  .tool-card[data-tool="Mod Manager"]::before {
+    content: "";
     position: absolute;
     inset: 0;
     background-size: cover;
