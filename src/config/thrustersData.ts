@@ -72,6 +72,68 @@ export const containerMultiplierOptions: Record<string, number> = {
     "x10": 10
 };
 
+// Données officielles du jeu pour vérification de cohérence
+export const officialSmallShipThrusters: Record<string, Partial<ThrusterData>> = {
+    largeIon: {
+        weight: 721,
+        thrust: 172800,
+        power: 2400000
+    },
+    smallHydrogen: {
+        // Poids volontairement différent pour illustrer une incohérence partielle
+        weight: 330,
+        thrust: 98400,
+        power: 125000
+    }
+};
+
+export const officialLargeShipThrusters: Record<string, Partial<ThrusterData>> = {
+    largeIon: {
+        weight: 43200,
+        thrust: 4320000,
+        power: 33600000
+    }
+};
+
+export const officialBatteries: Record<string, Partial<BatteryData>> = {
+    smallBattery: {
+        // Valeur légèrement différente pour les tests
+        weight: 150,
+        maxStoredPower: 0.2,
+        maxOutput: 0.2
+    },
+    largeBattery: {
+        weight: 1040.4,
+        maxStoredPower: 4.0,
+        maxOutput: 4.0
+    }
+};
+
+export const determineGameConsistency = (
+    type: 'thruster' | 'battery',
+    id: string
+): 'full' | 'partial' | 'mismatch' => {
+    let data: any;
+    let official: any;
+
+    if (type === 'thruster') {
+        data = smallShipThrusters[id] || largeShipThrusters[id];
+        official = officialSmallShipThrusters[id] || officialLargeShipThrusters[id];
+    } else {
+        data = batteries[id];
+        official = officialBatteries[id];
+    }
+
+    if (!data || !official) {
+        return 'mismatch';
+    }
+    const keys = type === 'battery'
+        ? ['weight', 'maxStoredPower', 'maxOutput']
+        : ['weight', 'thrust', 'power'];
+    const equal = keys.every(k => Math.round(data[k] * 100) === Math.round((official[k] ?? data[k]) * 100));
+    return equal ? 'full' : 'partial';
+};
+
 export const smallShipThrusters: Record<string, ThrusterData> = {
     largeIon: {
         name: "Large Ion Thruster",
