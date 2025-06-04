@@ -81,9 +81,10 @@ Pour réimporter une configuration, cliquez sur le bouton **Importer** dans la s
 
 ## 🧩 Mod Manager
 
-Ce nouvel outil permettra de gérer vos listes de mods Space Engineers.
+Ce nouvel outil permet désormais d'éditer simplement vos listes de mods Space Engineers.
 Inspiré par [Space-Engineers-Mod-Manager](https://github.com/g3arshift/Space-Engineers-Mod-Manager),
-il offrira l'import/export de modlists et la détection de conflits.
+il offre l'import/export de modlists et la détection de conflits (fonctionnalité planifiée).
+Vous pouvez ajouter ou supprimer des mods, sauvegarder la liste dans le navigateur et exporter un fichier `modlist.json`.
 
 ## 🤝 Contribution
 

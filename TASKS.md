@@ -10,3 +10,9 @@
 3. **Suivi des conflits entre mods**
    - Implémenter un système d'analyse des incompatibilités (feature planifiée dans le Mod Manager).
    - Afficher des alertes claires pour les utilisateurs.
+4. **Interface d'édition**
+   - Permettre l'ajout et la suppression de mods manuellement.
+   - Sauvegarder la liste localement dans le navigateur.
+5. **Import/Export simplifié**
+   - Importer une `modlist.json` depuis un fichier.
+   - Exporter la liste actuelle au même format.
