@@ -331,7 +331,41 @@ export const itemData: Record<string, ItemData> = {
         mass: 1.0,
         volume: 0.37
     },
-    // ... autres items ...
+    "DisplayName_Item_IronOre": {
+        name: "Iron Ore",
+        type: "Ore",
+        subtype: "Iron",
+        mass: 3.0,
+        volume: 0.37
+    },
+    "DisplayName_Item_GoldOre": {
+        name: "Gold Ore",
+        type: "Ore",
+        subtype: "Gold",
+        mass: 4.0,
+        volume: 0.37
+    },
+    "DisplayName_Item_UraniumOre": {
+        name: "Uranium Ore",
+        type: "Ore",
+        subtype: "Uranium",
+        mass: 7.0,
+        volume: 0.37
+    },
+    "DisplayName_Item_IronIngot": {
+        name: "Iron Ingot",
+        type: "Ingot",
+        subtype: "Iron",
+        mass: 0.37,
+        volume: 0.127
+    },
+    "DisplayName_Item_GoldIngot": {
+        name: "Gold Ingot",
+        type: "Ingot",
+        subtype: "Gold",
+        mass: 0.52,
+        volume: 0.065
+    },
     "DisplayName_Item_UraniumIngot": {
         name: "Uranium Ingot",
         type: "Ingot",
@@ -369,6 +403,24 @@ export const ores: Record<string, OreData> = {
         mass: 7.8,
         volume: 0.37,
         baseValue: 100
+    },
+    stone: {
+        name: "Pierre",
+        mass: 2.7,
+        volume: 0.37,
+        baseValue: 10
+    },
+    uranium: {
+        name: "Minerai d'Uranium",
+        mass: 19.0,
+        volume: 0.37,
+        baseValue: 500
+    },
+    gold: {
+        name: "Minerai d'Or",
+        mass: 5.0,
+        volume: 0.37,
+        baseValue: 200
     }
 };
 

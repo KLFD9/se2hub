@@ -1,36 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  gravityOptions, 
+import {
+  gravityOptions,
   atmosphereOptions,
   containerMultiplierOptions,
   smallShipThrusters,
   largeShipThrusters,
-  smallShipCargo,
-  largeShipCargo,
   ThrusterData,
   batteries,
   ores
 } from '../config/thrustersData';
+import { calculateContainerStats, ContainerConfig as CargoConfig, ContainerStats } from '../utils/containerStats';
 import '../styles/pages/SpaceCalc.css';
 
 type VehicleType = 'atmospheric' | 'interplanetary';
 
-interface ContainerConfig {
-  small: number;
-  medium: number;
-  large: number;
-  isFilled: boolean;
-}
-
 interface CalculationResults {
   requiredThrust: number;
-  containerStats: {
-    totalMass: number;
-    totalVolume: number;
-    emptyMass: number;
-    maxCapacity: number;
-    fillStatus: string;
-  };
+  containerStats: ContainerStats;
   batteryRequirements: {
     count: number;
     optimalCount: number;
@@ -57,13 +43,6 @@ interface SavedConfig {
   targetAutonomy: number;
 }
 
-interface ContainerStats {
-  totalMass: number;
-  totalVolume: number;
-  emptyMass: number;
-  maxCapacity: number;
-  fillStatus: string;
-}
 
 interface AxisConfiguration {
   direction: string;
@@ -228,11 +207,13 @@ const SpaceCalcPage: React.FC = () => {
   // Fusion des paramètres en un unique facteur de marge (en %)
   const [systemMargin, setSystemMargin] = useState<number>(100);
   const [targetAutonomy, setTargetAutonomy] = useState<number>(1);
-  const [containers, setContainers] = useState<ContainerConfig>({
+  const [containers, setContainers] = useState<CargoConfig>({
     small: 0,
     medium: 0,
     large: 0,
-    isFilled: false
+    isFilled: false,
+    oreType: 'iron',
+    customDensity: 0
   });
   const [results, setResults] = useState<CalculationResults | null>(null);
   const [multiAxisResults, setMultiAxisResults] = useState<MultiAxisResults | null>(null);
@@ -247,21 +228,9 @@ const SpaceCalcPage: React.FC = () => {
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [theme] = useState<'retro' | 'modern'>('retro');
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const calculateContainerStats = (): ContainerStats => {
-    const cargoData = shipSize === 'small' ? smallShipCargo : largeShipCargo;
-    let totalVolume = 0, emptyMass = 0, maxCapacity = 0;
-    Object.entries(containers).forEach(([size, value]) => {
-      if (size !== 'isFilled' && cargoData[size]) {
-        const count = Number(value);
-        emptyMass += cargoData[size].mass * count;
-        totalVolume += cargoData[size].volume * count;
-        maxCapacity += cargoData[size].volume * count * 7.8;
-      }
-    });
-    const totalMass = containers.isFilled ? emptyMass + (totalVolume * ores.iron.mass) : emptyMass;
-    return { totalMass, totalVolume, emptyMass, maxCapacity, fillStatus: containers.isFilled ? 'Remplis de minerai de fer' : 'Vides' };
-  };
+  const getContainerStats = React.useCallback((): ContainerStats => {
+    return calculateContainerStats(shipSize, containers);
+  }, [shipSize, containers]);
 
   useEffect(() => {
     const saved = localStorage.getItem('spacecalc-configs');
@@ -269,21 +238,21 @@ const SpaceCalcPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const stats = calculateContainerStats();
+    const stats = getContainerStats();
     setContainerStats(stats);
-  }, [calculateContainerStats, containers, shipSize]);
+  }, [getContainerStats, containers, shipSize]);
 
   const resetConfig = () => {
     setWeight('');
     setSystemMargin(100);
     setTargetAutonomy(1);
-    setContainers({ small: 0, medium: 0, large: 0, isFilled: false });
+    setContainers({ small: 0, medium: 0, large: 0, isFilled: false, oreType: 'iron', customDensity: 0 });
     setResults(null);
     setMultiAxisResults(null);
     setBatteryExplanation("");
   };
 
-  const updateContainer = (key: keyof ContainerConfig, value: number | boolean) => {
+  const updateContainer = (key: keyof CargoConfig, value: number | boolean | string) => {
     setContainers(prev => ({ ...prev, [key]: value }));
   };
 
@@ -315,7 +284,7 @@ const SpaceCalcPage: React.FC = () => {
 
   const calculateThrusters = (e: React.FormEvent): void => {
     e.preventDefault();
-    const stats = calculateContainerStats();
+    const stats = getContainerStats();
     setContainerStats(stats);
     const baseWeight = parseFloat(weight);
     const totalWeight = baseWeight + stats.totalMass;
@@ -579,6 +548,20 @@ const SpaceCalcPage: React.FC = () => {
                     Remplir les Conteneurs
                   </label>
                 </div>
+                {containers.isFilled && (
+                  <div className="container-input">
+                    <label>Contenu</label>
+                    <select value={containers.oreType} onChange={(e) => updateContainer('oreType', e.target.value)}>
+                      {Object.entries(ores).map(([key, ore]) => (
+                        <option key={key} value={key}>{ore.name}</option>
+                      ))}
+                      <option value="custom">Personnalisé</option>
+                    </select>
+                    {containers.oreType === 'custom' && (
+                      <input type="number" placeholder="kg/L" value={containers.customDensity} onChange={(e) => updateContainer('customDensity', parseFloat(e.target.value) || 0)} />
+                    )}
+                  </div>
+                )}
               </div>
               <div className="container-stats">
                 <div className="container-stats-item">
