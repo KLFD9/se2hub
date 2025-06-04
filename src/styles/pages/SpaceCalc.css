@@ -876,6 +876,7 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   justify-content: flex-end;
 }
+.import-btn,
 .export-btn {
   background: linear-gradient(135deg, #2c3e50, #3498db);
   color: #ffffff;
@@ -893,6 +894,7 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
   overflow: hidden;
 }
+.import-btn::before,
 .export-btn::before {
   content: '';
   position: absolute;
@@ -904,13 +906,16 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
+.import-btn:hover::before,
 .export-btn:hover::before {
   opacity: 1;
 }
+.import-btn:hover,
 .export-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
+.import-btn:active,
 .export-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -1158,6 +1163,7 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   justify-content: flex-end;
 }
+.import-btn,
 .export-btn {
   background: linear-gradient(135deg, #2c3e50, #3498db);
   color: #ffffff;
@@ -1175,6 +1181,7 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
   overflow: hidden;
 }
+.import-btn::before,
 .export-btn::before {
   content: '';
   position: absolute;
@@ -1186,13 +1193,16 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
+.import-btn:hover::before,
 .export-btn:hover::before {
   opacity: 1;
 }
+.import-btn:hover,
 .export-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
+.import-btn:active,
 .export-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);

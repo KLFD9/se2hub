@@ -56,6 +56,29 @@ Le projet nécessite les configurations suivantes:
 - Configuration des services de news
 - Paramètres de connexion aux réseaux sociaux
 
+## 📤 Export/Import SpaceCalc
+
+L'outil **SpaceCalc** permet d'exporter vos calculs sous forme de fichier JSON. Ce fichier suit la structure suivante :
+
+```json
+{
+  "configuration": {
+    "shipSize": "small",
+    "baseWeight": 10000,
+    "gravity": "earth",
+    "atmosphere": "normal",
+    "multiplier": "realistic"
+  },
+  "containerStats": { /* ... */ },
+  "thrusterResults": { /* ... */ },
+  "multiAxisConfig": { /* ... */ },
+  "timestamp": "2024-01-01T12:00:00Z",
+  "version": "1.0.0"
+}
+```
+
+Pour réimporter une configuration, cliquez sur le bouton **Importer** dans la section d'export de SpaceCalc et sélectionnez votre fichier `.json`. Les valeurs de configuration (taille du vaisseau, masse, environnement...) seront chargées automatiquement ainsi que les résultats associés.
+
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues! Voici comment participer:
