@@ -75,9 +75,20 @@ const ModManagerPage: React.FC = () => {
     }
     try {
       const resp = await fetch(`/api/mods/search?q=${encodeURIComponent(query)}`);
-      const data = await resp.json();
-      if (Array.isArray(data.mods)) {
-        setSearchResults(data.mods);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      const contentType = resp.headers.get('content-type') || '';
+      const text = await resp.text();
+      if (contentType.includes('application/json')) {
+        const data = JSON.parse(text);
+        if (Array.isArray(data.mods)) {
+          setSearchResults(data.mods);
+        } else {
+          setSearchResults([]);
+        }
+      } else {
+        console.error('Unexpected response', text.slice(0, 100));
       }
     } catch (err) {
       console.error('Search failed', err);
