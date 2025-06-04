@@ -226,6 +226,7 @@ const SpaceCalcPage: React.FC = () => {
   });
   const [batteryExplanation, setBatteryExplanation] = useState<string>("");
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
+  const [configName, setConfigName] = useState<string>("");
   const [theme] = useState<'retro' | 'modern'>('retro');
 
   const getContainerStats = React.useCallback((): ContainerStats => {
@@ -271,6 +272,27 @@ const SpaceCalcPage: React.FC = () => {
     const newConfigs = savedConfigs.filter(config => config.id !== id);
     setSavedConfigs(newConfigs);
     localStorage.setItem('spacecalc-configs', JSON.stringify(newConfigs));
+  };
+
+  const saveCurrentConfig = () => {
+    if (!configName.trim()) return;
+    const newConfig: SavedConfig = {
+      id: crypto.randomUUID(),
+      name: configName.trim(),
+      shipSize,
+      weight,
+      gravity,
+      atmosphere,
+      multiplier,
+      thrusterType: vehicleType === 'atmospheric' ? 'atmospheric' : 'interplanetary',
+      batteryType: 'auto',
+      systemMargin,
+      targetAutonomy
+    };
+    const newConfigs = [...savedConfigs, newConfig];
+    setSavedConfigs(newConfigs);
+    localStorage.setItem('spacecalc-configs', JSON.stringify(newConfigs));
+    setConfigName('');
   };
 
   const calculateAxisCombination = (
@@ -646,6 +668,17 @@ const SpaceCalcPage: React.FC = () => {
                 ))}
               </select>
             </div>
+            <div className="input-group">
+              <label htmlFor="configName">Nom de la Configuration</label>
+              <input
+                type="text"
+                id="configName"
+                value={configName}
+                onChange={(e) => setConfigName(e.target.value)}
+                placeholder="Ex: Cargo léger"
+              />
+            </div>
+            <button type="button" className="save-btn" onClick={saveCurrentConfig}>Sauvegarder</button>
             <button type="submit" className="calculate-btn">Calculer</button>
             <button type="button" className="reset-btn" onClick={resetConfig}>Reset</button>
           </form>

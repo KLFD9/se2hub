@@ -215,6 +215,23 @@ input[type="range"]::-moz-range-thumb {
   border-color: var(--color-accent);
 }
 
+/* Bouton Sauvegarder */
+.save-btn {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--color-accent-dark);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.save-btn:hover {
+  background: var(--color-accent);
+}
+
 /* Résultats et cartes */
 .results-section {
   display: grid;
