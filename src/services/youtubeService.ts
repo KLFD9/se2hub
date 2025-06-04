@@ -5,7 +5,7 @@ export interface VideosResponse {
   nextPageToken?: string;
 }
 
-const DURATION_REGEX = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+const DURATION_REGEX = /PT(?:(?<H>\d+)H)?(?:(?<M>\d+)M)?(?:(?<S>\d+)S)?/;
 const CACHE_KEY = "yt_v3_cache";
 const CACHE_TTL = 14400000;
 const API_ENDPOINTS = {
