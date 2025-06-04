@@ -1,11 +1,11 @@
 import { Video } from "../types/Video";
+import { formatDuration } from "../utils/formatDuration";
 
 export interface VideosResponse {
   videos: Video[];
   nextPageToken?: string;
 }
 
-const DURATION_REGEX = /PT(?:(?<H>\d+)H)?(?:(?<M>\d+)M)?(?:(?<S>\d+)S)?/;
 const CACHE_KEY = "yt_v3_cache";
 const CACHE_TTL = 14400000;
 const API_ENDPOINTS = {
@@ -18,13 +18,6 @@ interface CacheState {
   videosMap: Record<string, Video>;
   pageMap: Record<string, { ids: string[]; nextToken?: string }>;
   timestamp: number;
-}
-
-function formatDuration(duration: string): string {
-  const { H = 0, M = 0, S = 0 } = duration.match(DURATION_REGEX)?.groups || {};
-  return [Number(H) > 0 ? H : null, String(M).padStart(Number(H) > 0 ? 2 : 1, "0"), String(S).padStart(2, "0")]
-    .filter(Boolean)
-    .join(":");
 }
 
 function createCacheManager() {

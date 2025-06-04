@@ -69,13 +69,13 @@ Les contributions sont les bienvenues! Voici comment participer:
 ## 📝 Standards de Code
 
 - Utilisation de TypeScript strict
-- Tests unitaires avec Jest
+- Pas encore de tests unitaires (Jest à venir)
 - Respect des règles ESLint
 - Documentation des composants avec JSDoc
 
 ## 📫 Contact
 
-Pour toute question ou suggestion, n'hésitez pas à:
+Pour toute question ou suggestion, n'hésitez pas à :
 
 - Ouvrir une issue
 - Rejoindre notre communauté Discord
