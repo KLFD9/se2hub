@@ -10,9 +10,6 @@ import {
   ThrusterData,
   batteries,
   ores,
-  officialSmallShipThrusters,
-  officialLargeShipThrusters,
-  officialBatteries,
   determineGameConsistency
 } from '../config/thrustersData';
 import '../styles/pages/SpaceCalc.css';
