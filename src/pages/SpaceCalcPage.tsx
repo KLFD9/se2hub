@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  gravityOptions, 
+import {
+  gravityOptions,
   atmosphereOptions,
   containerMultiplierOptions,
   smallShipThrusters,
@@ -9,7 +9,11 @@ import {
   largeShipCargo,
   ThrusterData,
   batteries,
-  ores
+  ores,
+  officialSmallShipThrusters,
+  officialLargeShipThrusters,
+  officialBatteries,
+  determineGameConsistency
 } from '../config/thrustersData';
 import '../styles/pages/SpaceCalc.css';
 
@@ -112,14 +116,15 @@ const efficiencyFactor = 0.85; // pour modéliser des pertes énergétiques
 // Composant de vérification de cohérence
 const GameConsistencyCheck = ({ type, id }: { type: 'thruster' | 'battery'; id: string }) => {
   const [consistency, setConsistency] = useState<'full' | 'partial' | 'mismatch'>('full');
+
   useEffect(() => {
-    // Comparaison avec les données du jeu (à compléter)
-    setConsistency('full');
+    setConsistency(determineGameConsistency(type, id));
   }, [type, id]);
+
   return (
-    <span className={`consistency-indicator ${consistency}`}>
-      {consistency === 'full' ? '✅' : consistency === 'partial' ? '⚠️' : '❌'}
-    </span>
+    <span className={`consistency-indicator ${consistency}`}>{
+      consistency === 'full' ? '✅' : consistency === 'partial' ? '⚠️' : '❌'
+    }</span>
   );
 };
 
