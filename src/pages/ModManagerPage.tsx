@@ -4,6 +4,7 @@ import '../styles/pages/ModManager.css';
 interface ModEntry {
   id: string;
   name: string;
+  image?: string;
 }
 
 const STORAGE_KEY = 'se2hub-modlist';
@@ -154,7 +155,7 @@ const ModManagerPage: React.FC = () => {
             placeholder="Nom du mod"
           />
         </div>
-        <button className="add-mod-btn" onClick={addMod} type="button">
+        <button className="add-mod-btn" onClick={() => addMod()} type="button">
           Ajouter
         </button>
       </div>
