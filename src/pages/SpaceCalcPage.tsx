@@ -670,7 +670,7 @@ const SpaceCalcPage: React.FC = () => {
                 placeholder="Ex: Cargo léger"
               />
             </div>
-            <button type="button" className="save-btn" onClick={saveCurrentConfig}">Sauvegarder</button>
+            <button type="button" className="save-btn" onClick={saveCurrentConfig}>Sauvegarder</button>
             <button type="submit" className="calculate-btn">Calculer</button>
             <button type="button" className="reset-btn" onClick={resetConfig}>Reset</button>
           </form>
