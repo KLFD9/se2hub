@@ -7,7 +7,8 @@ import {
   largeShipThrusters,
   ThrusterData,
   batteries,
-  ores
+  ores,
+  optimizeBatteryCombo
 } from '../config/thrustersData';
 import { calculateContainerStats, ContainerConfig as CargoConfig, ContainerStats } from '../utils/containerStats';
 import '../styles/pages/SpaceCalc.css';
@@ -340,66 +341,14 @@ const SpaceCalcPage: React.FC = () => {
     const requiredEnergy = requiredPower * targetAutonomy * (systemMargin / 100);
 
     // --- Sélection des batteries ---
-    // Option A : uniquement petites batteries
-    const optionSmallCount = Math.ceil(requiredEnergy / batteries.smallBattery.maxStoredPower);
-    // Option B : uniquement grandes batteries (avec 10% de marge supplémentaire)
-    const optionLargeCount = Math.ceil(requiredEnergy * 1.1 / batteries.largeBattery.maxStoredPower);
-    // Option C : combinaison mixte
-    const mixLarge = Math.floor(requiredEnergy / batteries.largeBattery.maxStoredPower);
-    const remainingEnergy = requiredEnergy - mixLarge * batteries.largeBattery.maxStoredPower;
-    const mixSmall = Math.ceil(remainingEnergy / batteries.smallBattery.maxStoredPower);
-
-    const optionA = {
-      large: 0,
-      small: optionSmallCount,
-      totalStorage: optionSmallCount * batteries.smallBattery.maxStoredPower,
-      weight: optionSmallCount * batteries.smallBattery.weight
-    };
-    const optionB = {
-      large: optionLargeCount,
-      small: 0,
-      totalStorage: optionLargeCount * batteries.largeBattery.maxStoredPower,
-      weight: optionLargeCount * batteries.largeBattery.weight
-    };
-    const optionC = {
-      large: mixLarge,
-      small: mixSmall,
-      totalStorage: mixLarge * batteries.largeBattery.maxStoredPower + mixSmall * batteries.smallBattery.maxStoredPower,
-      weight: mixLarge * batteries.largeBattery.weight + mixSmall * batteries.smallBattery.weight
-    };
-
-    let batteryExplanation = "Sélection des batteries :\n";
-    batteryExplanation += `Option A (petites uniquement) : ${optionA.small} petites, stockage total = ${optionA.totalStorage.toFixed(2)} MWh, poids = ${optionA.weight.toFixed(2)} kg.\n`;
-    batteryExplanation += `Option B (grandes uniquement, +10% marge) : ${optionB.large} grandes, stockage total = ${optionB.totalStorage.toFixed(2)} MWh, poids = ${optionB.weight.toFixed(2)} kg.\n`;
-    batteryExplanation += `Option C (mixte) : ${optionC.large} grandes + ${optionC.small} petites, stockage total = ${optionC.totalStorage.toFixed(2)} MWh, poids = ${optionC.weight.toFixed(2)} kg.\n`;
-    
-    let finalOption;
-    if (optionB.weight < optionA.weight * 0.7) {
-      batteryExplanation += "La règle de substitution a sélectionné l'option B car son poids est inférieur à 70% du poids de l'option A.\n";
-      finalOption = { large: optionB.large, small: optionB.small };
-    } else {
-      const wasteA = optionA.totalStorage - requiredEnergy;
-      const wasteB = optionB.totalStorage - requiredEnergy;
-      const wasteC = optionC.totalStorage - requiredEnergy;
-      const wasteRatioA = wasteA / requiredEnergy;
-      const wasteRatioB = wasteB / requiredEnergy;
-      const wasteRatioC = wasteC / requiredEnergy;
-      const scoreA = wasteRatioA * 1000 + optionA.weight / 1000;
-      const scoreB = wasteRatioB * 1000 + optionB.weight / 1000;
-      const scoreC = wasteRatioC * 1000 + optionC.weight / 1000;
-      batteryExplanation += `Scores : Option A = ${scoreA.toFixed(2)}, Option B = ${scoreB.toFixed(2)}, Option C = ${scoreC.toFixed(2)}.\n`;
-      if (scoreA <= scoreB && scoreA <= scoreC) {
-        finalOption = { large: optionA.large, small: optionA.small };
-        batteryExplanation += "L'option A a le score le plus bas et a été sélectionnée.\n";
-      } else if (scoreB <= scoreA && scoreB <= scoreC) {
-        finalOption = { large: optionB.large, small: optionB.small };
-        batteryExplanation += "L'option B a le score le plus bas et a été sélectionnée.\n";
-      } else {
-        finalOption = { large: optionC.large, small: optionC.small };
-        batteryExplanation += "L'option C a le score le plus bas et a été sélectionnée.\n";
-      }
-    }
-    // --- Fin de la sélection des batteries ---
+    const finalOption = optimizeBatteryCombo(requiredPower, requiredEnergy);
+    const totalStorage =
+      finalOption.large * batteries.largeBattery.maxStoredPower +
+      finalOption.small * batteries.smallBattery.maxStoredPower;
+    const batteryExplanation =
+      `Optimisation via optimizeBatteryCombo -> ` +
+      `${finalOption.large} grandes + ${finalOption.small} petites ` +
+      `pour ${totalStorage.toFixed(2)} MWh.`;
     setBatteryExplanation(batteryExplanation);
 
     const batteryReqs = {
